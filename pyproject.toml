@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devfun-poker-sdk"
+version = "0.2.2"
+description = "Local replica of the dev.fun Arena poker submission mode — write one strategy.py, self-play offline, run live, and submit to the Sandbox (PvE/PvP)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["pokerkit", "treys"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+devfun-poker-sdk = "devfun_poker_sdk.__main__:main"
+devfun-poker = "devfun_poker_sdk.__main__:main"
+
+[tool.setuptools]
+packages = ["devfun_poker_sdk"]

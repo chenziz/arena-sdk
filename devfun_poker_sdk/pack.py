@@ -1,0 +1,262 @@
+"""Build + locally validate a Sandbox submission bundle.
+
+The dev.fun Arena server accepts a `static-agent` submission as either a bare
+`strategy.py` (auto-wrapped to `harness/strategy.py`) or a `bundle.zip`. Use a
+zip when you ship trained weights / data under `assets/`, or multiple code files
+under `harness/` (via `--harness <dir>`).
+
+This module mirrors the SERVER's `inspectSandboxBundle` rules (size/structure)
+AND — crucially — **import-validates the bundle in isolation**: it extracts the
+zip to a temp dir and imports `harness/strategy.py` with ONLY the bundle on the
+path, exactly as the server does. That catches the #1 silent failure — a strategy
+that imports a sibling module which never made it into the bundle — locally, in
+milliseconds, instead of after you've spent a metered production submission.
+
+Bundle layout (only these three top-level dirs are allowed):
+    bundle.zip
+      harness/        # code; harness/strategy.py REQUIRED for static-agent
+        strategy.py
+        (helpers.py)  # extra modules go here too (use --harness <dir>)
+      assets/         # optional: model weights / lookup tables (largest budget)
+      skills/         # optional helpers; NOT allowed for static-agent
+"""
+from __future__ import annotations
+
+import io
+import os
+import subprocess
+import sys
+import tempfile
+import textwrap
+import zipfile
+from pathlib import Path
+from typing import Optional
+
+# ── server limits (limits.ts) — keep in sync ────────────────────────────────
+MiB = 1024 * 1024
+KiB = 1024
+TOTAL_BYTES = 100 * MiB        # zip size AND total uncompressed
+HARNESS_BYTES = 256 * KiB      # harness/ uncompressed (also caps a bare strategy.py)
+ASSETS_BYTES = 100 * MiB       # assets/
+SKILLS_BYTES = 64 * KiB        # skills/
+MAX_FILES = 512
+
+ALLOWED_TOP = ("harness", "assets", "skills")
+STATIC_STRATEGY_ENTRY = "harness/strategy.py"
+
+# A minimal but realistic preflop table (hero faces a raise) used to smoke-test
+# that act() actually runs in the bundle, not just imports.
+_SAMPLE_TABLE = {
+    "tableId": "validate", "potChips": 30, "street": "Preflop", "boardCards": [],
+    "selfSeatNumber": 1, "secondsUntilDeadline": 10.0,
+    "seats": [{"seatNumber": 1, "agentHandle": "hero", "stackChips": 1000,
+               "holeCards": ["Ah", "Kd"]},
+              {"seatNumber": 2, "agentHandle": "villain", "stackChips": 1000,
+               "holeCards": []}],
+    "allowedActions": {"availableActions": ["fold", "call", "raise"],
+                       "callChips": 20, "callToAmount": 20,
+                       "canCheck": False, "canBet": False, "canRaise": True,
+                       "betRange": {"min": 0, "max": 0},
+                       "raiseRange": {"min": 40, "max": 1000}},
+}
+
+
+class BundleError(Exception):
+    """Local validation failure — message mirrors the server's 400 text."""
+
+
+def _iter_files(root: Path):
+    for p in sorted(root.rglob("*")):
+        if "__pycache__" in p.parts or p.suffix in (".pyc", ".pyo"):
+            continue                                  # never ship bytecode caches
+        if p.is_symlink():
+            raise BundleError(f"bundle may not contain symlinks: {p}")
+        if p.is_file():
+            yield p
+
+
+def _validate_isolation(raw: bytes) -> None:
+    """Extract the bundle and import harness/strategy.py with ONLY the bundle on
+    the path (like the server), then call act() once. Hard-fail on import error
+    (the classic 'sibling module not bundled' trap); warn on a runtime throw."""
+    with tempfile.TemporaryDirectory() as td:
+        zipfile.ZipFile(io.BytesIO(raw)).extractall(td)
+        harness = str(Path(td) / "harness")
+        script = textwrap.dedent(f"""
+            import sys, json, importlib.util
+            sys.path.insert(0, {harness!r})
+            spec = importlib.util.spec_from_file_location(
+                "strategy", {harness!r} + "/strategy.py")
+            m = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(m)                 # import error -> exit 2
+            fn = (getattr(m, "act", None) or getattr(m, "choose_action", None)
+                  or getattr(m, "decide", None))
+            if fn is None:
+                print("NO_ENTRYPOINT"); sys.exit(3)
+            try:
+                r = fn({_SAMPLE_TABLE!r})
+                print("ACT_OK " + json.dumps(r, default=str)[:200])
+            except Exception as e:
+                print("ACT_THREW " + type(e).__name__ + ": " + str(e)[:160])
+        """)
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        try:
+            # -I = isolated mode: ignore PYTHONPATH + user site-packages and do
+            # NOT put cwd on the path, so the check faithfully mirrors the server's
+            # bare import path — a module that's only on YOUR PYTHONPATH can't mask
+            # one that's missing from the bundle. We add ONLY harness/ explicitly.
+            proc = subprocess.run([sys.executable, "-I", "-c", script], cwd=harness,
+                                  capture_output=True, text=True, timeout=30, env=env)
+        except subprocess.TimeoutExpired:
+            raise BundleError(
+                "importing the bundle + one act() call did not finish within 30s — "
+                "likely an import-time hang or an infinite loop. (Separately, the server "
+                "enforces a per-decision deadline ~10s on every act() — keep act() fast.) "
+                "Fix before submitting.")
+        out = (proc.stdout + proc.stderr).strip()
+        # NO_ENTRYPOINT is signalled by an exact exit code (3), not a substring, so
+        # source/traceback text can't misclassify it.
+        if proc.returncode == 3:
+            raise BundleError("strategy.py defines no entrypoint — add an "
+                              "act(table) (or choose_action(table) / decide(...)) function.")
+        if proc.returncode != 0:
+            tail = out.splitlines()[-1] if out else f"exit {proc.returncode}"
+            # Classify by the exception CLASS on the traceback's final line only.
+            etype = tail.split(":", 1)[0].strip()
+            if etype in ("ModuleNotFoundError", "ImportError"):
+                raise BundleError(
+                    "bundle is missing a module needed to import — a sibling .py file "
+                    "→ add it with --harness <dir>, or an unvendored 3rd-party package "
+                    f"→ ship it under assets/ or inline it: {tail}")
+            if etype in ("SyntaxError", "IndentationError", "TabError"):
+                raise BundleError(f"strategy.py has a syntax error: {tail}")
+            raise BundleError(f"strategy.py failed to load in isolation: {tail}")
+        last = out.splitlines()[-1] if out else ""
+        if last.startswith("ACT_THREW"):
+            print(f"[pack] ⚠ act() raised on a sample hand ({last[9:]}) — "
+                  "may be fine (needs assets/network) but check it.")
+        else:
+            print(f"[pack] isolation ok: imports clean + act() ran ({last})")
+
+
+def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = None,
+                 assets: Optional[str] = None, skills: Optional[str] = None,
+                 template: str = "static-agent", out: Optional[str] = None,
+                 validate: bool = True) -> bytes:
+    """Build a bundle.zip (returns its bytes; also writes to `out` if given).
+
+    Provide EITHER `strategy` (one file -> harness/strategy.py) OR `harness` (a
+    directory copied wholesale into harness/, for multi-file bots; must contain
+    strategy.py). `assets`/`skills` are directories copied under assets//skills/.
+    Validates against the server rules AND import-isolation before returning.
+    """
+    if not strategy and not harness:
+        raise BundleError("provide --strategy <file> or --harness <dir>")
+
+    buf = io.BytesIO()
+    nfiles = 0
+    harness_b = assets_b = skills_b = 0
+
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        if harness:
+            base = Path(harness).resolve()
+            if not base.is_dir():
+                raise BundleError(f"--harness must be a directory: {base}")
+            if not (base / "strategy.py").is_file():
+                raise BundleError("--harness dir must contain a strategy.py file")
+            # Do NOT load_strategy() here: it imports without the harness dir on
+            # sys.path, so a legitimate sibling import (`import helper`) would
+            # false-fail. The isolation check below imports it correctly (with
+            # only the bundled harness/ on the path, exactly like the server).
+            print(f"[pack] harness: {base} (entry: strategy.py)")
+            for p in _iter_files(base):
+                data = p.read_bytes()
+                harness_b += len(data); nfiles += 1
+                z.writestr(f"harness/{p.relative_to(base).as_posix()}", data)
+        else:
+            strat_path = Path(strategy).resolve()
+            if not strat_path.exists():
+                raise BundleError(f"strategy file not found: {strat_path}")
+            # one self-contained strategy.py -> harness/strategy.py.
+            # Import + entrypoint validation happens in the isolation check below
+            # (a faithful bare-path subprocess), NOT here in the live process —
+            # so a missing import surfaces as a clean BundleError, not a traceback,
+            # and can't false-pass on the caller's sys.path.
+            print(f"[pack] strategy: {strat_path.name}")
+            code = strat_path.read_bytes()
+            harness_b += len(code); nfiles += 1
+            z.writestr(STATIC_STRATEGY_ENTRY, code)
+
+        for label, src in (("assets", assets), ("skills", skills)):
+            if not src:
+                continue
+            base = Path(src).resolve()
+            if not base.is_dir():
+                raise BundleError(f"{label} path must be a directory: {base}")
+            for p in _iter_files(base):
+                data = p.read_bytes()
+                if label == "assets":
+                    assets_b += len(data)
+                else:
+                    skills_b += len(data)
+                nfiles += 1
+                z.writestr(f"{label}/{p.relative_to(base).as_posix()}", data)
+
+    raw = buf.getvalue()
+
+    # ── mirror inspectSandboxBundle hard rules ──────────────────────────────
+    if "harness/strategy.py" not in zipfile.ZipFile(io.BytesIO(raw)).namelist():
+        raise BundleError("static-agent submissions must include harness/strategy.py")
+    if nfiles < 1:
+        raise BundleError("bundle must contain at least one file")
+    if nfiles > MAX_FILES:
+        raise BundleError(f"bundle has {nfiles} files; max {MAX_FILES}")
+    if len(raw) > TOTAL_BYTES:
+        raise BundleError(f"bundle.zip is {len(raw)//MiB}MiB; max {TOTAL_BYTES//MiB}MiB")
+    if (harness_b + assets_b + skills_b) > TOTAL_BYTES:
+        raise BundleError(f"bundle uncompressed is {(harness_b+assets_b+skills_b)//MiB}MiB; "
+                          f"max {TOTAL_BYTES//MiB}MiB")
+    if harness_b > HARNESS_BYTES:
+        raise BundleError(f"harness/ is {harness_b//KiB}KiB; max {HARNESS_BYTES//KiB}KiB")
+    if assets_b > ASSETS_BYTES:
+        raise BundleError(f"assets/ is {assets_b//MiB}MiB; max {ASSETS_BYTES//MiB}MiB")
+    if skills_b > SKILLS_BYTES:
+        raise BundleError(f"skills/ is {skills_b//KiB}KiB; max {SKILLS_BYTES//KiB}KiB")
+    if template == "static-agent" and skills_b > 0:
+        raise BundleError("static-agent submissions may not include skills/")
+
+    # ── import-isolation: catch missing-sibling-import BEFORE you submit ─────
+    if validate:
+        _validate_isolation(raw)
+
+    if out:
+        Path(out).write_bytes(raw)
+        print(f"[pack] wrote {out}  ({len(raw)//KiB}KiB, {nfiles} files, "
+              f"harness={harness_b//KiB}KiB assets={assets_b//KiB}KiB)")
+    return raw
+
+
+def main(argv=None) -> int:
+    import argparse
+    ap = argparse.ArgumentParser(prog="devfun_poker_sdk pack",
+                                 description="Build + validate a Sandbox bundle.zip")
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--strategy", help="path to a single self-contained strategy.py")
+    src.add_argument("--harness", help="dir copied into harness/ (multi-file bot; needs strategy.py)")
+    ap.add_argument("--assets", help="dir copied under assets/ (model weights/data)")
+    ap.add_argument("--skills", help="dir copied under skills/ (llm-agent only)")
+    ap.add_argument("--template", default="static-agent",
+                    choices=["static-agent", "llm-agent"])
+    ap.add_argument("--out", default="bundle.zip", help="output zip path")
+    a = ap.parse_args(argv)
+    try:
+        build_bundle(a.strategy, harness=a.harness, assets=a.assets, skills=a.skills,
+                     template=a.template, out=a.out)
+    except BundleError as e:
+        print(f"[pack] INVALID: {e}")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

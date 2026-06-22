@@ -1,0 +1,80 @@
+# Changelog
+
+## 0.2.2 — backend-sync fixes (post PR #971) + correctness
+- **Fix (real break): `--replace` now sends the multipart field `replace`** — it was
+  `replaceActivePvpBot`, which the backend ignores, so PvP bot replacement never
+  happened (user hit `409 sandbox_pvp_active_bot_exists` instead). Verified vs develop.
+- **Fix: the BB-option spot is labeled `raise`, not `bet`** in the local engine,
+  matching the server (`currentBet > 0 ⇒ raise`; a posted blind is a wager). Before,
+  self-play accepted a `bet` the server would reject on that exact spot.
+- **Surface `errorCode`** — submit failures now print the backend's stable machine
+  code (1 of 14, e.g. `sandbox_daily_limit` / `sandbox_strategy_invalid`).
+- **`gto` equity is multiway-correct** — samples `players − 1` villains (HU unchanged;
+  6-max no longer over-values hands). **`gto` card parsing** handles 3-char `"10h"`.
+- **`normalize_action`** coerces a non-str action and folds on a dict with no `action`.
+- **multipart** strips CR/LF from field values (no header injection). Shared
+  `clamp_to_range` helper added (kills sizing-logic drift).
+- Backend sync verified: TrueSkill response field names unchanged (poll output intact);
+  `MAX_FILES` counts files only (SDK matches).
+- **Golden contract fixtures** — real PvE + PvP submission responses captured from Beta
+  (`tests/fixtures/`), with tests asserting the SDK parses the live contract and that
+  the dry-run mock matches the real response shape (no silent drift).
+- **Forward-compat PvP rating read** — `trueskillScore/Mu/Sigma` first, falling back to
+  `scaleRating/rating/mu/sigma`, so a future server-side rename won't break `poll`.
+- `comps` now labels `PVE`-named competitions correctly (was `?`).
+- 18 tests total (+9 this release).
+- Release prep (CodeX review): golden fixtures sanitized (no real backend ids);
+  `clamp_to_range` respects `availableActions`; `_pvp_rating` is null-safe across a
+  renamed field; `examples/byo/` bring-your-own-bot worked example; docs narrowed to
+  the `static-agent` path; `.gitignore` hardened (.DS_Store, caches).
+
+## 0.2.1 — robustness, safety & UX hardening
+- **Import-isolation bundle validation** — `pack`/`submit` extract the bundle and
+  import `harness/strategy.py` in a `python -I` subprocess (only the bundle on the
+  path, like the server) and run `act()` once. Catches the #1 silent failure — a
+  strategy that imports a sibling module not in the bundle — **locally**, before you
+  spend a metered submission. Timeout fails closed.
+- **`--harness <dir>`** — bundle a multi-file bot (strategy.py + helper modules).
+- **`./poker access`** — one-command claim + whitelist check (the 403 gate).
+- **dry-run scores labelled** `(simulated, not your bot)` so a canned number can't be
+  mistaken for a real score.
+- **submit aborts before upload** when access is explicitly denied (avoids a 403).
+- **Precise `pack` errors** — distinguishes syntax error / no entrypoint / missing
+  module, each pointing at the real fix.
+- **selfplay diagnostic** — one stderr warning when your `act()` raises or returns a
+  non-dict (no more silent fold-and-bad-bb/100).
+- **Multi-file local runs** — sibling imports resolve during selfplay/live (scoped
+  sys.path: no persistent mutation / no cross-bot module collision).
+- **CLI** — top-level `--help` lists subcommands; `--endpoint` shows its default.
+- **Docs** — README first screen carries the daily-quota / test-first callout + a
+  pointer to SUBMITTING.md; SUBMITTING §3 has the full annotated `table` schema
+  (hole cards live under `seats[]`) + a sizing recipe.
+- **Hygiene** — `.gitignore` excludes internal scaffolding; credentials only ever
+  travel in the `x-arena-api-key` header (never URLs/logs).
+
+## 0.2.0
+- **Sandbox submission** — `submit` and `pack` commands. Build a bundle
+  (`harness/strategy.py` [+ `assets/`]), validate it locally against the exact
+  server rules, upload via multipart to `POST /submissions/`, poll to a terminal
+  status, and print `bb/100` (and TrueSkill for PvP).
+- **PvE and PvP** from the same `strategy.py` — the competition decides which.
+  `--pvp` asserts the PvP rules (static-agent only, 3 submissions/UTC-day).
+- **`--dry-run`** — exercise the whole submit→poll flow offline (no network, no
+  API key), mirroring the real endpoint shapes.
+- **`comps`** — list active competitions, labelled PvE/PvP.
+- **`--replace`** — PvP: swap an in-flight active bot (else `409`).
+- **`SUBMITTING.md`** — production limits (PvP 3/UTC-day, PvE none), score-refresh
+  semantics, access whitelist, local-first guidance, bring-your-own-bot guide.
+- **`examples/llm_strategy.py`** — GPT/LLM-driven `act()` with a safe fallback.
+- **`gto` opponent** — a GTO-approx bot (Monte-Carlo equity + pot odds, via
+  `treys`) that beats every heuristic; the "hard" tier of the local ladder.
+- **`--opponent self`** — play your bot vs your bot.
+- **Fix:** hero's seat now rotates each hand in local play, so `bb/100` is
+  position-fair (a symmetric bot nets ~0 instead of a button-bias skew).
+- **`./poker`** branded CLI wrapper + `version` command.
+- Packaging: `pyproject.toml` (`pip install devfun-poker-sdk`, `devfun-poker-sdk`
+  console script). MIT license. Smoke tests under `tests/`.
+
+## 0.1.0
+- Local replica of the server submission mode: `table`/`act()` contract,
+  reproducible pokerkit engine, `selfplay`/`eval` → `bb/100`, live REST runner.
