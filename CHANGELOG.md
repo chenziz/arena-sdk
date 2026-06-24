@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 — slimmer & cleaner
+- **Removed `llm-agent`** (the `--template` choice + `--skills`): the SDK only
+  builds the `static-agent` bundles it actually supports — dropping a half-wired
+  surface and a docs contradiction. (`examples/llm_strategy.py` stays for
+  local/live use; distill an LLM to a chart under `assets/` to submit it.)
+- **Fix:** `selfplay`/`eval` reject `--players` outside 2..6 and `--hands < 1`
+  instead of silently printing a fake `bb/100 = 0`.
+- **Fix:** `comps` no longer mislabels a heads-up PvE eval as PvP (it inferred PvP
+  from seat count; now uses explicit config or the comp name).
+- **Docs:** README rewritten ~half the length (quick start · strategy · self-play ·
+  submit · file map); detailed rules live only in SUBMITTING.md. Removed fluff and
+  an inaccurate table-field claim. Default endpoint is Production.
+
 ## 0.2.2 — backend-sync fixes (post PR #971) + correctness
 - **Fix (real break): `--replace` now sends the multipart field `replace`** — it was
   `replaceActivePvpBot`, which the backend ignores, so PvP bot replacement never

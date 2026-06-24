@@ -12,13 +12,12 @@ path, exactly as the server does. That catches the #1 silent failure — a strat
 that imports a sibling module which never made it into the bundle — locally, in
 milliseconds, instead of after you've spent a metered production submission.
 
-Bundle layout (only these three top-level dirs are allowed):
+Bundle layout:
     bundle.zip
-      harness/        # code; harness/strategy.py REQUIRED for static-agent
+      harness/        # code; harness/strategy.py REQUIRED
         strategy.py
         (helpers.py)  # extra modules go here too (use --harness <dir>)
-      assets/         # optional: model weights / lookup tables (largest budget)
-      skills/         # optional helpers; NOT allowed for static-agent
+      assets/         # optional: trained weights / lookup tables (largest budget)
 """
 from __future__ import annotations
 
@@ -38,10 +37,7 @@ KiB = 1024
 TOTAL_BYTES = 100 * MiB        # zip size AND total uncompressed
 HARNESS_BYTES = 256 * KiB      # harness/ uncompressed (also caps a bare strategy.py)
 ASSETS_BYTES = 100 * MiB       # assets/
-SKILLS_BYTES = 64 * KiB        # skills/
 MAX_FILES = 512
-
-ALLOWED_TOP = ("harness", "assets", "skills")
 STATIC_STRATEGY_ENTRY = "harness/strategy.py"
 
 # A minimal but realistic preflop table (hero faces a raise) used to smoke-test
@@ -140,22 +136,21 @@ def _validate_isolation(raw: bytes) -> None:
 
 
 def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = None,
-                 assets: Optional[str] = None, skills: Optional[str] = None,
-                 template: str = "static-agent", out: Optional[str] = None,
+                 assets: Optional[str] = None, out: Optional[str] = None,
                  validate: bool = True) -> bytes:
-    """Build a bundle.zip (returns its bytes; also writes to `out` if given).
+    """Build a static-agent bundle.zip (returns its bytes; writes to `out` if given).
 
-    Provide EITHER `strategy` (one file -> harness/strategy.py) OR `harness` (a
-    directory copied wholesale into harness/, for multi-file bots; must contain
-    strategy.py). `assets`/`skills` are directories copied under assets//skills/.
-    Validates against the server rules AND import-isolation before returning.
+    Provide EITHER `strategy` (one file -> harness/strategy.py) OR `harness` (a dir
+    copied into harness/, for multi-file bots; must contain strategy.py). `assets`
+    is a dir copied under assets/ (trained weights / lookup tables). Validates
+    against the server limits + import-isolation before returning.
     """
     if not strategy and not harness:
         raise BundleError("provide --strategy <file> or --harness <dir>")
 
     buf = io.BytesIO()
     nfiles = 0
-    harness_b = assets_b = skills_b = 0
+    harness_b = assets_b = 0
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         if harness:
@@ -187,20 +182,14 @@ def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = Non
             harness_b += len(code); nfiles += 1
             z.writestr(STATIC_STRATEGY_ENTRY, code)
 
-        for label, src in (("assets", assets), ("skills", skills)):
-            if not src:
-                continue
-            base = Path(src).resolve()
+        if assets:
+            base = Path(assets).resolve()
             if not base.is_dir():
-                raise BundleError(f"{label} path must be a directory: {base}")
+                raise BundleError(f"assets path must be a directory: {base}")
             for p in _iter_files(base):
                 data = p.read_bytes()
-                if label == "assets":
-                    assets_b += len(data)
-                else:
-                    skills_b += len(data)
-                nfiles += 1
-                z.writestr(f"{label}/{p.relative_to(base).as_posix()}", data)
+                assets_b += len(data); nfiles += 1
+                z.writestr(f"assets/{p.relative_to(base).as_posix()}", data)
 
     raw = buf.getvalue()
 
@@ -213,17 +202,13 @@ def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = Non
         raise BundleError(f"bundle has {nfiles} files; max {MAX_FILES}")
     if len(raw) > TOTAL_BYTES:
         raise BundleError(f"bundle.zip is {len(raw)//MiB}MiB; max {TOTAL_BYTES//MiB}MiB")
-    if (harness_b + assets_b + skills_b) > TOTAL_BYTES:
-        raise BundleError(f"bundle uncompressed is {(harness_b+assets_b+skills_b)//MiB}MiB; "
+    if (harness_b + assets_b) > TOTAL_BYTES:
+        raise BundleError(f"bundle uncompressed is {(harness_b+assets_b)//MiB}MiB; "
                           f"max {TOTAL_BYTES//MiB}MiB")
     if harness_b > HARNESS_BYTES:
         raise BundleError(f"harness/ is {harness_b//KiB}KiB; max {HARNESS_BYTES//KiB}KiB")
     if assets_b > ASSETS_BYTES:
         raise BundleError(f"assets/ is {assets_b//MiB}MiB; max {ASSETS_BYTES//MiB}MiB")
-    if skills_b > SKILLS_BYTES:
-        raise BundleError(f"skills/ is {skills_b//KiB}KiB; max {SKILLS_BYTES//KiB}KiB")
-    if template == "static-agent" and skills_b > 0:
-        raise BundleError("static-agent submissions may not include skills/")
 
     # ── import-isolation: catch missing-sibling-import BEFORE you submit ─────
     if validate:
@@ -243,15 +228,11 @@ def main(argv=None) -> int:
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--strategy", help="path to a single self-contained strategy.py")
     src.add_argument("--harness", help="dir copied into harness/ (multi-file bot; needs strategy.py)")
-    ap.add_argument("--assets", help="dir copied under assets/ (model weights/data)")
-    ap.add_argument("--skills", help="dir copied under skills/ (llm-agent only)")
-    ap.add_argument("--template", default="static-agent",
-                    choices=["static-agent", "llm-agent"])
+    ap.add_argument("--assets", help="dir copied under assets/ (trained weights / lookup tables)")
     ap.add_argument("--out", default="bundle.zip", help="output zip path")
     a = ap.parse_args(argv)
     try:
-        build_bundle(a.strategy, harness=a.harness, assets=a.assets, skills=a.skills,
-                     template=a.template, out=a.out)
+        build_bundle(a.strategy, harness=a.harness, assets=a.assets, out=a.out)
     except BundleError as e:
         print(f"[pack] INVALID: {e}")
         return 1

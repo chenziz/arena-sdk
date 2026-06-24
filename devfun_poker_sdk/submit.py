@@ -13,7 +13,7 @@ Endpoints (x-arena-api-key auth):
 Usage:
     python -m devfun_poker_sdk submit --strategy examples/strategy.py \
         --competition <competitionId> [--api-key arena_sk_...] \
-        [--assets weights/] [--template static-agent|llm-agent] [--pvp|--pve]
+        [--assets weights/ | --harness dir/] [--pvp|--pve] [--replace]
     python -m devfun_poker_sdk submit --strategy examples/strategy.py \
         --competition demo --dry-run            # offline — exercise the whole flow
 """
@@ -83,7 +83,7 @@ def _request(method: str, url: str, api_key: str, *, body: Optional[bytes] = Non
     raise SystemExit(f"{method} {url} failed: {last}")
 
 
-def _make_mock(expect: Optional[str], template: str) -> Callable:
+def _make_mock(expect: Optional[str]) -> Callable:
     """Offline stand-in for the three submission endpoints (--dry-run).
 
     Mirrors the real shapes so the whole submit→poll path runs with zero network:
@@ -100,7 +100,7 @@ def _make_mock(expect: Optional[str], template: str) -> Callable:
                         "message": "(dry-run) sandbox access ok"}}}
         if method == "POST" and tail.endswith("submissions"):
             return {"id": "dry-run-0001", "status": "Queued",
-                    "template": template, "competitionId": "dry-run",
+                    "template": "static-agent", "competitionId": "dry-run",
                     "targetHands": 20}
         if method == "GET" and tail.startswith("submissions/"):  # GET submissions/:id
             state["polls"] += 1
@@ -163,24 +163,18 @@ def check_access(endpoint: str, api_key: str, *, req: Callable = _request) -> di
 # ── submit + poll ───────────────────────────────────────────────────────────
 def submit(strategy: Optional[str] = None, *, competition_id: str,
            api_key: Optional[str],
-           endpoint: str = DEFAULT_ENDPOINT, template: str = "static-agent",
-           assets: Optional[str] = None, skills: Optional[str] = None,
-           harness: Optional[str] = None,
+           endpoint: str = DEFAULT_ENDPOINT,
+           assets: Optional[str] = None, harness: Optional[str] = None,
            expect: Optional[str] = None, watch: bool = True,
            poll_s: float = 5.0, dry_run: bool = False,
            replace: bool = False) -> dict:
     endpoint = endpoint.rstrip("/")
-    req: Callable = _make_mock(expect, template) if dry_run else _request
+    req: Callable = _make_mock(expect) if dry_run else _request
     if dry_run:
         print("[submit] DRY RUN — no network; exercising the full flow offline.")
         api_key = api_key or "dry-run"
     else:
         api_key = resolve_api_key(api_key)  # works for direct library callers too
-
-    # PvP comps require static-agent (server enforces); set it proactively.
-    if expect == "pvp" and template != "static-agent":
-        print("[submit] PvP requires template=static-agent; overriding.")
-        template = "static-agent"
 
     settings = check_access(endpoint, api_key, req=req)
     denied = (((settings.get("access") or {}).get("sandboxBenchmark") or {})
@@ -190,25 +184,21 @@ def submit(strategy: Optional[str] = None, *, competition_id: str,
                          "(a 403 would follow). Claim your agent + get whitelisted "
                          "(./poker access), then retry.")
 
-    # Always build + isolation-validate the bundle (catches a missing-sibling
-    # import locally, before you spend a metered submission), then upload the zip.
+    # Build + isolation-validate the bundle (catches a missing-sibling import
+    # locally, before you spend a metered submission), then upload the zip.
     try:
-        payload = build_bundle(strategy, harness=harness, assets=assets,
-                               skills=skills, template=template,
-                               validate=(template == "static-agent"))
+        payload = build_bundle(strategy, harness=harness, assets=assets)
     except BundleError as e:
         raise SystemExit(f"[submit] bundle invalid: {e}")
-    filename = "bundle.zip"
 
-    fields = {"competitionId": competition_id, "template": template}
+    fields = {"competitionId": competition_id, "template": "static-agent"}
     if replace:
-        # PvP: replace your current unfinished active bot (else 409
-        # sandbox_pvp_active_bot_exists). Note: the new bot's TrueSkill restarts.
-        # Backend reads the multipart field name `replace` (NOT replaceActivePvpBot).
+        # PvP: replace your current unfinished active bot (else 409). The backend
+        # reads the multipart field `replace`; the new bot's TrueSkill restarts.
         fields["replace"] = "true"
-    ctype, body = _multipart(fields, "file", filename, payload)
+    ctype, body = _multipart(fields, "file", "bundle.zip", payload)
     print(f"[submit] POST {endpoint}/submissions/  comp={competition_id} "
-          f"template={template} file={filename} ({len(payload)} bytes)")
+          f"({len(payload)} bytes)")
     # POST is non-idempotent — never auto-retry. A retried create after a
     # transient 5xx/timeout would duplicate the submission and burn the PvP
     # daily limit. retries=0 = single attempt.
@@ -316,8 +306,8 @@ def access_main(argv=None) -> int:
     s = check_access(a.endpoint.rstrip("/"), resolve_api_key(a.api_key))
     acc = (s.get("access") or {}).get("sandboxBenchmark") or {}
     if not acc.get("whitelisted"):
-        print("[access] not ready — claim your agent (link X) and ask an admin in "
-              "Discord to enable sandbox eval, then re-check.")
+        print("[access] not ready — claim your agent (link your X account) and ask "
+              "an admin in Discord to enable sandbox eval, then re-check.")
         return 1
     return 0
 
@@ -333,13 +323,10 @@ def main(argv=None) -> int:
     ap.add_argument("--api-key", help="arena_sk_...; else ARENA_API_KEY or .arena-credentials")
     ap.add_argument("--endpoint", default=os.environ.get("ARENA_ENDPOINT", DEFAULT_ENDPOINT),
                     help="API base (default: %(default)s)")
-    ap.add_argument("--template", default="static-agent",
-                    choices=["static-agent", "llm-agent"])
-    ap.add_argument("--assets", help="dir under assets/ (trained weights/data)")
-    ap.add_argument("--skills", help="dir under skills/ (llm-agent only)")
+    ap.add_argument("--assets", help="dir copied into assets/ (trained weights / lookup tables)")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--pvp", dest="expect", action="store_const", const="pvp",
-                   help="assert/treat the comp as PvP (forces static-agent)")
+                   help="treat the comp as PvP (3 submissions/UTC-day; --replace to swap)")
     g.add_argument("--pve", dest="expect", action="store_const", const="pve")
     ap.add_argument("--no-watch", dest="watch", action="store_false",
                     help="submit and exit without polling")
@@ -350,9 +337,8 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     api_key = resolve_api_key(a.api_key, required=not a.dry_run)
     submit(a.strategy, competition_id=a.competition, api_key=api_key,
-           endpoint=a.endpoint, template=a.template, assets=a.assets,
-           skills=a.skills, harness=a.harness, expect=a.expect, watch=a.watch,
-           dry_run=a.dry_run, replace=a.replace)
+           endpoint=a.endpoint, assets=a.assets, harness=a.harness,
+           expect=a.expect, watch=a.watch, dry_run=a.dry_run, replace=a.replace)
     return 0
 
 

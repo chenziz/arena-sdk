@@ -7,11 +7,10 @@ network, bad reply) — so it never crashes a match.
 
 WHERE IT WORKS
   • `selfplay` / `eval` / `live` — yes. Your machine has network + your API key.
-  • Sandbox `submit --template static-agent` — the model call will usually FAIL
-    (the sandbox blocks outbound network), so it silently plays the FALLBACK
-    heuristic. Don't ship a runtime-LLM bot as static-agent expecting real LLM
-    play. For LLM-in-the-loop on the server, use the `llm-agent` template, or
-    distill your LLM's decisions into a lookup table shipped under `assets/`.
+  • Sandbox `submit` — the model call usually FAILS (the sandbox blocks outbound
+    network), so it silently plays the FALLBACK heuristic. Don't expect real LLM
+    play in a submission. To use an LLM's strength on the server, distill its
+    decisions offline into a lookup table and ship that under `assets/`.
 
 CONFIG (env): OPENAI_API_KEY, optional OPENAI_BASE_URL (default OpenAI),
               optional OPENAI_MODEL (default gpt-4o-mini).

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devfun-poker-sdk"
-version = "0.2.2"
+version = "0.2.3"
 description = "Local replica of the dev.fun Arena poker submission mode — write one strategy.py, self-play offline, run live, and submit to the Sandbox (PvE/PvP)."
 readme = "README.md"
 requires-python = ">=3.10"

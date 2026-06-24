@@ -34,16 +34,16 @@ def test_pack_builds_static_bundle():
     assert "harness/strategy.py" in names
 
 
-def test_pack_rejects_skills_for_static(tmp_path=None):
+def test_harness_requires_strategy_py():
     import tempfile, os
     d = tempfile.mkdtemp()
-    with open(os.path.join(d, "h.py"), "w") as f:
+    with open(os.path.join(d, "helper.py"), "w") as f:
         f.write("x = 1\n")
     try:
-        build_bundle(str(STRATEGY), skills=d, template="static-agent")
-        raise AssertionError("expected BundleError for skills/ in static-agent")
+        build_bundle(harness=d)
+        raise AssertionError("expected BundleError for harness without strategy.py")
     except BundleError as e:
-        assert "skills" in str(e)
+        assert "strategy.py" in str(e)
 
 
 def test_selfplay_is_position_fair():
@@ -192,7 +192,7 @@ def test_dry_run_mock_matches_real_shape():
     # so dry-run can't go green while a real poll would print '?'.
     import json
     from devfun_poker_sdk.submit import _make_mock
-    mock = _make_mock("pvp", "static-agent")
+    mock = _make_mock("pvp")
     url = "https://x/api/arena/submissions/sid"
     mock("GET", url, "k")                 # Running
     final = mock("GET", url, "k")         # Succeeded (+ pvp)

@@ -233,6 +233,10 @@ def run_match(hero_fn: Callable, *, hands: int = 500, opponent: str = "tight",
               big_blind: int = 2, seed: Optional[int] = None, mirror: bool = True) -> dict:
     """Run `hands` hands; hero seat rotates; optional duplicate (mirror) hands to
     cut variance. Returns bb/100 + stats."""
+    if not 2 <= players <= 6:
+        raise SystemExit(f"--players must be 2..6 (got {players})")
+    if hands < 1:
+        raise SystemExit(f"--hands must be >= 1 (got {hands})")
     if seed is not None:
         random.seed(seed)
     if opponent == "self":

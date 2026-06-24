@@ -23,15 +23,14 @@ def _classify(c: dict) -> str:
     cfg = c.get("config") or c
     bench = cfg.get("benchmark") or {}
     pvp = (bench.get("sandboxPvp") or {}) if isinstance(bench, dict) else {}
-    seats = bench.get("seats") or cfg.get("seats")
-    if pvp.get("enabled") or (cfg.get("mode") == "benchmark" and seats == 2):
-        return "PvP"
     name = (c.get("name") or c.get("title") or "").lower()
-    if "pvp" in name:
+    # Explicit config or a strong name wins; never label PvP from seat count alone
+    # (a heads-up PvE eval also has 2 seats).
+    if pvp.get("enabled") or "pvp" in name:
         return "PvP"
     if "eval" in name or "benchmark" in name or "pve" in name:
         return "PvE"
-    if cfg.get("mode") == "benchmark" or bench:
+    if cfg.get("mode") == "benchmark":
         return "PvE"
     return "?"
 

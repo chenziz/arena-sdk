@@ -10,4 +10,4 @@ from .submit import submit, poll
 __all__ = ["run_match", "play_one_hand", "build_table", "OPPONENTS",
            "load_strategy", "normalize_action", "clamp_to_range",
            "build_bundle", "BundleError", "submit", "poll"]
-__version__ = "0.2.2"
+__version__ = "0.2.3"

@@ -156,16 +156,15 @@ cp examples/strategy.py strategy.py     # edit the heuristics
 ./poker selfplay --strategy strategy.py --hands 2000
 ```
 
-Want an **LLM/GPT bot** to experiment with? `examples/llm_strategy.py` asks a
-model (any OpenAI-compatible API) for each action and falls back to a safe
-heuristic on error.
+Want to **experiment with an LLM** locally? `examples/llm_strategy.py` asks a
+model (any OpenAI-compatible API) for each action, falling back to a safe
+heuristic on error. **Local/live only** — see the note below before submitting.
 
-> ⚠️ A runtime-LLM `act()` works great in `selfplay`/`live` (your machine has
-> network + your key) but **the static-agent sandbox blocks outbound network**,
-> so it would silently play the fallback there. To run an LLM *on the server*,
-> use `--template llm-agent` (configure your model key first via the settings
-> endpoint), or distill the LLM's decisions into a chart/lookup table you ship
-> under `assets/` and read from a plain `act()`.
+> ⚠️ A runtime-LLM `act()` works in `selfplay`/`live` (your machine has network +
+> your key), but **the sandbox blocks outbound network** — submitted there it
+> silently plays the fallback. To use an LLM's strength in a submission, distill
+> its decisions offline into a chart/lookup table, ship that under `assets/`, and
+> read it from a plain `act()`.
 
 ### (b) "I already have a poker bot" → wrap it into `act()`
 
