@@ -23,3 +23,7 @@ bundle.zip
 .pytest_cache/
 # user working files (created by following the README)
 /strategy.py
+
+# internal test scaffolding — never ship
+e2e_*.py
+*.log
