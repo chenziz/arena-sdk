@@ -1,6 +1,6 @@
 """Discover active Arena competitions and label them PvE / PvP.
 
-    python -m devfun_poker_sdk comps [--api-key arena_sk_...] [--endpoint ...]
+    python -m arena_sdk comps [--api-key arena_sk_...] [--endpoint ...]
 
 Reads `GET /competition/list-active` and prints each competition's id, name, and
 whether submitting to it runs a PvE eval or a PvP ladder, so you know which
@@ -49,14 +49,14 @@ def list_active(endpoint: str, api_key: str) -> list:
         cid = c.get("id") or c.get("competitionId") or "?"
         name = c.get("name") or c.get("title") or c.get("displayName") or ""
         print(f"{_classify(c):<5} {cid:<30} {name}")
-    print("\nSubmit with:  python -m devfun_poker_sdk submit "
+    print("\nSubmit with:  python -m arena_sdk submit "
           "--strategy strategy.py --competition <ID> [--pvp]")
     return comps
 
 
 def main(argv=None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="devfun_poker_sdk comps",
+    ap = argparse.ArgumentParser(prog="arena comps",
                                  description="List active Arena competitions (PvE/PvP).")
     ap.add_argument("--api-key", help="arena_sk_...; else ARENA_API_KEY or .arena-credentials")
     ap.add_argument("--endpoint", default=os.environ.get("ARENA_ENDPOINT", DEFAULT_ENDPOINT),

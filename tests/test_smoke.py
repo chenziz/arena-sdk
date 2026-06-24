@@ -9,11 +9,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-STRATEGY = ROOT / "examples" / "strategy.py"
+STRATEGY = ROOT / "examples" / "poker" / "strategy.py"
 
-from devfun_poker_sdk import (run_match, load_strategy, normalize_action,
+from arena_sdk import (run_match, load_strategy, normalize_action,
                               build_bundle, BundleError, submit)
-from devfun_poker_sdk.engine import bot_gto, bot_call
+from arena_sdk.poker.engine import bot_gto, bot_call
 
 
 def test_contract_normalize():
@@ -98,7 +98,7 @@ def test_bb_option_labeled_raise():
     # (currentBet = posted blind > 0), NOT `bet` — matching the server. Mislabeling
     # it `bet` made self-play pass an action the server rejects.
     from pokerkit import NoLimitTexasHoldem
-    from devfun_poker_sdk.engine import _AUTO, build_table
+    from arena_sdk.poker.engine import _AUTO, build_table
     state = NoLimitTexasHoldem.create_state(
         automations=_AUTO, ante_trimming_status=True, raw_antes=0,
         raw_blinds_or_straddles=(1, 2), min_bet=2,
@@ -110,7 +110,7 @@ def test_bb_option_labeled_raise():
 
 
 def test_gto_equity_sanity():
-    from devfun_poker_sdk.gto import _equity, _HAVE_TREYS
+    from arena_sdk.poker.gto import _equity, _HAVE_TREYS
     if not _HAVE_TREYS:
         return
     aa = _equity(["Ah", "Ad"], [], iters=400)
@@ -120,7 +120,7 @@ def test_gto_equity_sanity():
 
 
 def test_gto_norm_card():
-    from devfun_poker_sdk.gto import _norm
+    from arena_sdk.poker.gto import _norm
     assert _norm("Ah") == "Ah" and _norm("tD") == "Td"
     assert _norm("10h") == "Th"                 # 3-char no longer breaks the suit
 
@@ -133,7 +133,7 @@ def test_normalize_action_edges():
 
 
 def test_clamp_to_range():
-    from devfun_poker_sdk import clamp_to_range
+    from arena_sdk import clamp_to_range
     a = {"raiseRange": {"min": 40, "max": 1000}}
     assert clamp_to_range(a, "raise", 0.6, 100) == {"action": "raise", "amount": 60}
     assert clamp_to_range(a, "raise", 100, 100)["amount"] == 1000   # clamped to max
@@ -145,7 +145,7 @@ def test_clamp_to_range():
 
 
 def test_multipart_encoding():
-    from devfun_poker_sdk.submit import _multipart
+    from arena_sdk.submit import _multipart
     ctype, body = _multipart({"competitionId": "cmq1", "template": "static-agent"},
                              "file", "bundle.zip", b"PK\x03\x04")
     s = body.decode("latin1")
@@ -164,7 +164,7 @@ def test_golden_pve_contract():
     # Real captured PvE response (Beta) — guards the SDK's parsing against the live
     # contract, not just the dry-run mock.
     import json
-    from devfun_poker_sdk.submit import _print_final
+    from arena_sdk.submit import _print_final
     g = json.load(open(_FIX / "golden_pve.json"))
     assert g["status"] == "Succeeded" and g["pvp"] is None
     assert isinstance(g["rawBbPer100"], (int, float))
@@ -177,7 +177,7 @@ def test_golden_pve_contract():
 
 def test_golden_pvp_contract():
     import json
-    from devfun_poker_sdk.submit import _print_final, _pvp_rating
+    from arena_sdk.submit import _print_final, _pvp_rating
     g = json.load(open(_FIX / "golden_pvp.json"))
     assert g["status"] == "Succeeded" and isinstance(g["pvp"], dict)
     score, mu, sigma = _pvp_rating(g["pvp"])
@@ -191,7 +191,7 @@ def test_dry_run_mock_matches_real_shape():
     # The dry-run mock must carry every field the SDK reads from a REAL response,
     # so dry-run can't go green while a real poll would print '?'.
     import json
-    from devfun_poker_sdk.submit import _make_mock
+    from arena_sdk.submit import _make_mock
     mock = _make_mock("pvp")
     url = "https://x/api/arena/submissions/sid"
     mock("GET", url, "k")                 # Running

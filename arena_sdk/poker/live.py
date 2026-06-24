@@ -6,7 +6,7 @@ Local self-play (engine.py) and live play (here) share one contract, so a bot
 you tune offline plays unchanged online.
 
 Usage:
-    python -m devfun_poker_sdk live --strategy examples/strategy.py \
+    python -m arena_sdk live --strategy examples/poker/strategy.py \
         --competition <competitionId> --api-key <arena_sk_...> \
         [--endpoint https://arena.dev.fun/api/arena] [--join texas/join]
 
@@ -110,7 +110,7 @@ def play_live(strategy: Callable[[dict], dict], *, competition_id: str, api_key:
 
 def main(argv=None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="devfun_poker_sdk.live")
+    ap = argparse.ArgumentParser(prog="arena_sdk.poker.live")
     ap.add_argument("--strategy", required=True)
     ap.add_argument("--competition", required=True)
     ap.add_argument("--api-key", required=True)

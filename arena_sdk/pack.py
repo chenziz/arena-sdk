@@ -223,7 +223,7 @@ def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = Non
 
 def main(argv=None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="devfun_poker_sdk pack",
+    ap = argparse.ArgumentParser(prog="arena pack",
                                  description="Build + validate a Sandbox bundle.zip")
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--strategy", help="path to a single self-contained strategy.py")

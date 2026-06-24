@@ -1,8 +1,8 @@
-"""CLI:  python -m devfun_poker_sdk selfplay --strategy examples/strategy.py
-        python -m devfun_poker_sdk eval     --strategy examples/strategy.py
-        python -m devfun_poker_sdk pack     --strategy examples/strategy.py
-        python -m devfun_poker_sdk submit   --strategy examples/strategy.py --competition <id>
-        python -m devfun_poker_sdk live     --strategy examples/strategy.py --competition <id> --api-key ...
+"""CLI:  python -m arena_sdk selfplay --strategy examples/poker/strategy.py
+        python -m arena_sdk eval     --strategy examples/poker/strategy.py
+        python -m arena_sdk pack     --strategy examples/poker/strategy.py
+        python -m arena_sdk submit   --strategy examples/poker/strategy.py --competition <id>
+        python -m arena_sdk live     --strategy examples/poker/strategy.py --competition <id> --api-key ...
 """
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ import argparse
 import json
 import sys
 
-from .contract import load_strategy
-from .engine import run_match, OPPONENTS
+from .poker.contract import load_strategy
+from .poker.engine import run_match, OPPONENTS
 
 # Subcommands that own their own argparse — route argv straight to them.
 _DELEGATED = {"pack", "submit", "live", "comps"}
@@ -32,7 +32,7 @@ def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in ("version", "--version", "-V"):
         from . import __version__
-        print(f"devfun-poker-sdk {__version__}")
+        print(f"arena-sdk {__version__}")
         return 0
     if argv and argv[0] == "access":
         from .submit import access_main
@@ -46,12 +46,12 @@ def main(argv=None) -> int:
         elif cmd == "comps":
             from .comps import main as _m
         else:  # live
-            from .live import main as _m
+            from .poker.live import main as _m
         return _m(rest)
 
     ap = argparse.ArgumentParser(
-        prog="devfun_poker_sdk",
-        description="Local replica of dev.fun Arena submission mode.",
+        prog="arena",
+        description="dev.fun Arena SDK — build, test, and submit Arena agents.",
         epilog="more subcommands (run `<cmd> --help`): pack · submit · comps · "
                "access · live · version")
     sub = ap.add_subparsers(dest="cmd", required=True)

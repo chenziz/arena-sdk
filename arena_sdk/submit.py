@@ -11,10 +11,10 @@ Endpoints (x-arena-api-key auth):
     GET  {endpoint}/submissions/{id}             # poll status -> bb/100 (+ pvp{} TrueSkill)
 
 Usage:
-    python -m devfun_poker_sdk submit --strategy examples/strategy.py \
+    python -m arena_sdk submit --strategy examples/poker/strategy.py \
         --competition <competitionId> [--api-key arena_sk_...] \
         [--assets weights/ | --harness dir/] [--pvp|--pve] [--replace]
-    python -m devfun_poker_sdk submit --strategy examples/strategy.py \
+    python -m arena_sdk submit --strategy examples/poker/strategy.py \
         --competition demo --dry-run            # offline — exercise the whole flow
 """
 from __future__ import annotations
@@ -182,7 +182,7 @@ def submit(strategy: Optional[str] = None, *, competition_id: str,
     if denied and not dry_run:
         raise SystemExit("[submit] aborting before upload — sandbox access not granted "
                          "(a 403 would follow). Claim your agent + get whitelisted "
-                         "(./poker access), then retry.")
+                         "(./arena access), then retry.")
 
     # Build + isolation-validate the bundle (catches a missing-sibling import
     # locally, before you spend a metered submission), then upload the zip.
@@ -297,7 +297,7 @@ def _print_final(st: dict) -> None:
 def access_main(argv=None) -> int:
     """`access` subcommand — check claim + sandbox eval whitelist (the 403 gate)."""
     import argparse
-    ap = argparse.ArgumentParser(prog="devfun_poker_sdk access",
+    ap = argparse.ArgumentParser(prog="arena access",
                                  description="Check your sandbox eval access.")
     ap.add_argument("--api-key", help="arena_sk_...; else ARENA_API_KEY or .arena-credentials")
     ap.add_argument("--endpoint", default=os.environ.get("ARENA_ENDPOINT", DEFAULT_ENDPOINT),
@@ -314,7 +314,7 @@ def access_main(argv=None) -> int:
 
 def main(argv=None) -> int:
     import argparse
-    ap = argparse.ArgumentParser(prog="devfun_poker_sdk submit",
+    ap = argparse.ArgumentParser(prog="arena submit",
                                  description="Submit strategy.py to the Arena Sandbox (PvE/PvP).")
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--strategy", help="a single self-contained strategy.py")

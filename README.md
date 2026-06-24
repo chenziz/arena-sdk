@@ -1,13 +1,17 @@
-# dev.fun Poker SDK
+# dev.fun Arena SDK
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.2.3-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-success)](CHANGELOG.md)
+
+Build, test, and submit agents for the dev.fun Arena. The platform layer
+(submit/pack/comps) is environment-agnostic; each game ships as an environment
+package — the first is **poker** (`arena_sdk.poker`).
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
-**same file** to the dev.fun Arena sandbox — our servers run it for you (PvE eval
-or PvP ladder). The `table` your `act()` reads locally matches the live server
-payload, so a bot tuned offline runs unchanged online.
+**same file** to the Arena sandbox — our servers run it for you (PvE eval or PvP
+ladder). The `table` your `act()` reads locally matches the live server payload,
+so a bot tuned offline runs unchanged online.
 
 > Default endpoint: **`https://arena.dev.fun/api/arena`** (Production). Override
 > per-call with `--endpoint` or `$ARENA_ENDPOINT`.
@@ -18,17 +22,17 @@ payload, so a bot tuned offline runs unchanged online.
 pip install -e .                 # deps (pokerkit, treys) install automatically
 
 # 1. iterate locally — free, offline, unlimited
-./poker selfplay --strategy examples/strategy.py --hands 1000 --opponent gto
+./arena selfplay --strategy examples/poker/strategy.py --hands 1000 --opponent gto
 
 # 2. dry-run the whole submit flow — free, offline, no API key
-./poker submit --strategy examples/strategy.py --competition demo --pvp --dry-run
+./arena submit --strategy examples/poker/strategy.py --competition demo --pvp --dry-run
 
 # 3. submit for real (needs a whitelisted agent — see SUBMITTING.md)
-./poker comps                                          # find a competition id
-./poker submit --strategy examples/strategy.py --competition <id> --pvp
+./arena comps                                          # find a competition id
+./arena submit --strategy examples/poker/strategy.py --competition <id> --pvp
 ```
 
-`./poker <verb>` == `python -m devfun_poker_sdk <verb>` (== `devfun-poker` after a
+`./arena <verb>` == `python -m arena_sdk <verb>` (== `arena` after a
 `pip install`). Commands: `selfplay`, `eval`, `pack`, `submit`, `comps`, `access`,
 `live`, `version`.
 
@@ -49,13 +53,13 @@ def act(table: dict) -> dict:
 - The full `table` schema (hole cards, board, blinds, seats, `allowedActions`) is in
   **[SUBMITTING.md](SUBMITTING.md)**.
 
-Start from `examples/strategy.py` (tight-aggressive) or `examples/skeletons/`.
+Start from `examples/poker/strategy.py` (tight-aggressive) or `examples/poker/skeletons/`.
 Already have a bot? Wrap it into `act()` — see [SUBMITTING.md §4](SUBMITTING.md).
 
 ## Local self-play (offline, free)
 
 ```bash
-./poker selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
+./arena selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
 # --players 2..6 · --opponent random|call|loose (easy) · tight · gto (hard) · mixed · self
 ```
 
@@ -76,19 +80,21 @@ against the real server rules, then uploads and polls for your score.
 
 **Read [SUBMITTING.md](SUBMITTING.md) before submitting** — the access whitelist,
 daily limits (PvP = 3/UTC-day), scoring, and why to test locally first. Just want
-the bundle? `./poker pack --strategy strategy.py --out bundle.zip`.
+the bundle? `./arena pack --strategy strategy.py --out bundle.zip`.
 
 ## File map
 
 ```
-poker                  branded CLI wrapper
-devfun_poker_sdk/
-  contract.py          the table/act() contract
-  engine.py            local engine + built-in opponents (self-play)
-  gto.py               GTO-approx opponent (Monte-Carlo equity)
-  pack.py  submit.py   build/validate a bundle · submit + poll
-  comps.py live.py     list competitions · live-API runner
-examples/              strategy.py · skeletons/ · byo/ (bring-your-own-bot)
+arena                  CLI wrapper (./arena <verb>)
+arena_sdk/
+  pack.py  submit.py   platform: build/validate a bundle · submit + poll
+  comps.py             platform: list competitions
+  poker/               the poker environment
+    contract.py        the table/act() contract
+    engine.py          local engine + built-in opponents (self-play)
+    gto.py             GTO-approx opponent (Monte-Carlo equity)
+    live.py            live-API runner (Playground / Tournament)
+examples/poker/        strategy.py · skeletons/ · byo/ (bring-your-own-bot)
 SUBMITTING.md          production rules: access, limits, scoring, full table schema
 ```
 

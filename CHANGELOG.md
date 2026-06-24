@@ -1,9 +1,20 @@
 # Changelog
 
+## 0.3.0 — Arena SDK (env-aware structure)
+- **Renamed `devfun-poker-sdk` → `arena-sdk`** (package `arena_sdk`, CLI `arena`).
+  The SDK is now the platform foundation; poker is its **first environment**, not
+  the whole thing — so new tracks become a new env package, not a new repo/CLI.
+- **Split platform vs environment.** Environment-agnostic plumbing
+  (`pack` · `submit` · `comps`) stays at the top level; poker-specific code
+  (`contract` · `engine` · `gto` · `live`) moves under `arena_sdk/poker/`, and the
+  poker examples under `examples/poker/`. No logic changed — pure restructure.
+- CLI is now `./arena <verb>` (== `python -m arena_sdk <verb>` == `arena` after
+  install). All 18 tests pass unchanged.
+
 ## 0.2.3 — slimmer & cleaner
 - **Removed `llm-agent`** (the `--template` choice + `--skills`): the SDK only
   builds the `static-agent` bundles it actually supports — dropping a half-wired
-  surface and a docs contradiction. (`examples/llm_strategy.py` stays for
+  surface and a docs contradiction. (`examples/poker/llm_strategy.py` stays for
   local/live use; distill an LLM to a chart under `assets/` to submit it.)
 - **Fix:** `selfplay`/`eval` reject `--players` outside 2..6 and `--hands < 1`
   instead of silently printing a fake `bb/100 = 0`.
@@ -38,7 +49,7 @@
 - 18 tests total (+9 this release).
 - Release prep (CodeX review): golden fixtures sanitized (no real backend ids);
   `clamp_to_range` respects `availableActions`; `_pvp_rating` is null-safe across a
-  renamed field; `examples/byo/` bring-your-own-bot worked example; docs narrowed to
+  renamed field; `examples/poker/byo/` bring-your-own-bot worked example; docs narrowed to
   the `static-agent` path; `.gitignore` hardened (.DS_Store, caches).
 
 ## 0.2.1 — robustness, safety & UX hardening
@@ -48,7 +59,7 @@
   strategy that imports a sibling module not in the bundle — **locally**, before you
   spend a metered submission. Timeout fails closed.
 - **`--harness <dir>`** — bundle a multi-file bot (strategy.py + helper modules).
-- **`./poker access`** — one-command claim + whitelist check (the 403 gate).
+- **`./arena access`** — one-command claim + whitelist check (the 403 gate).
 - **dry-run scores labelled** `(simulated, not your bot)` so a canned number can't be
   mistaken for a real score.
 - **submit aborts before upload** when access is explicitly denied (avoids a 403).
@@ -78,14 +89,14 @@
 - **`--replace`** — PvP: swap an in-flight active bot (else `409`).
 - **`SUBMITTING.md`** — production limits (PvP 3/UTC-day, PvE none), score-refresh
   semantics, access whitelist, local-first guidance, bring-your-own-bot guide.
-- **`examples/llm_strategy.py`** — GPT/LLM-driven `act()` with a safe fallback.
+- **`examples/poker/llm_strategy.py`** — GPT/LLM-driven `act()` with a safe fallback.
 - **`gto` opponent** — a GTO-approx bot (Monte-Carlo equity + pot odds, via
   `treys`) that beats every heuristic; the "hard" tier of the local ladder.
 - **`--opponent self`** — play your bot vs your bot.
 - **Fix:** hero's seat now rotates each hand in local play, so `bb/100` is
   position-fair (a symmetric bot nets ~0 instead of a button-bias skew).
-- **`./poker`** branded CLI wrapper + `version` command.
-- Packaging: `pyproject.toml` (`pip install devfun-poker-sdk`, `devfun-poker-sdk`
+- **`./arena`** branded CLI wrapper + `version` command.
+- Packaging: `pyproject.toml` (`pip install arena-sdk`, `arena-sdk`
   console script). MIT license. Smoke tests under `tests/`.
 
 ## 0.1.0

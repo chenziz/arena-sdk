@@ -24,8 +24,8 @@ Until both are true, `submit` returns `403 sandbox_benchmark_access_required`.
 Check yours anytime:
 
 ```bash
-./poker access                                  # checks claim + whitelist (one command)
-./poker access --endpoint https://arena.dev.fun/api/arena   # (prod; reads your .arena-credentials)
+./arena access                                  # checks claim + whitelist (one command)
+./arena access --endpoint https://arena.dev.fun/api/arena   # (prod; reads your .arena-credentials)
 ```
 
 ---
@@ -55,7 +55,7 @@ Check yours anytime:
   score overwrites the old one** (there's no "keep my best"). So a worse
   resubmission *lowers* your board position.
 - Replacing a **still-running** PvP bot needs an explicit flag:
-  `./poker submit ... --pvp --replace` (otherwise `409 sandbox_pvp_active_bot_exists`).
+  `./arena submit ... --pvp --replace` (otherwise `409 sandbox_pvp_active_bot_exists`).
 
 ---
 
@@ -68,16 +68,16 @@ write act(table)  →  selfplay (free)  →  --dry-run (free)  →  submit (mete
 
 ```bash
 # 1. iterate locally — free, unlimited, ~500 hands/s
-./poker selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
+./arena selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
 
 # 2. prove the submission pipeline offline — free, no API key
-./poker submit --strategy strategy.py --competition demo --pvp --dry-run
+./arena submit --strategy strategy.py --competition demo --pvp --dry-run
 
 # 3. find a real competition
-./poker comps
+./arena comps
 
 # 4. submit for real — this is the metered step
-./poker submit --strategy strategy.py --competition <id> --pvp
+./arena submit --strategy strategy.py --competition <id> --pvp
 ```
 
 **Do not submit straight to production to "see what happens".** That's what
@@ -137,7 +137,7 @@ Get your hole cards: `next(s for s in table["seats"] if s["seatNumber"] == table
 - String (`"call"`) and tuple (`("raise", 120, "reasoning")`) returns also work.
 
 Same file, three uses: `selfplay` (local), `live` (your machine vs the live API),
-`submit` (our servers run it). Tune once, byte-for-byte. More: `examples/strategy.py`.
+`submit` (our servers run it). Tune once, byte-for-byte. More: `examples/poker/strategy.py`.
 
 ---
 
@@ -149,14 +149,14 @@ Get on the board in 5 minutes, then improve:
 
 ```bash
 # simplest legal bot — proves your pipeline end to end
-./poker submit --strategy examples/skeletons/always_call.py --competition <id> --dry-run
+./arena submit --strategy examples/poker/skeletons/always_call.py --competition <id> --dry-run
 
 # a real tight-aggressive starting point
-cp examples/strategy.py strategy.py     # edit the heuristics
-./poker selfplay --strategy strategy.py --hands 2000
+cp examples/poker/strategy.py strategy.py     # edit the heuristics
+./arena selfplay --strategy strategy.py --hands 2000
 ```
 
-Want to **experiment with an LLM** locally? `examples/llm_strategy.py` asks a
+Want to **experiment with an LLM** locally? `examples/poker/llm_strategy.py` asks a
 model (any OpenAI-compatible API) for each action, falling back to a safe
 heuristic on error. **Local/live only** — see the note below before submitting.
 
@@ -184,7 +184,7 @@ def act(table: dict) -> dict:
 > file.py` ships ONLY that one file — a `from my_bot import ...` would import fine
 > locally but `ModuleNotFoundError` on the server. Put all your `.py` in one dir
 > (with `strategy.py` as the entry) and submit the dir:
-> `./poker submit --harness mybot_dir/ --competition <id>`. `pack`/`submit`
+> `./arena submit --harness mybot_dir/ --competition <id>`. `pack`/`submit`
 > now import your bundle **in isolation** and fail locally if a module is
 > missing — so you can't burn a submission on a bundle that won't import.
 > (Or just keep it to a single self-contained `strategy.py`.)
@@ -193,14 +193,14 @@ def act(table: dict) -> dict:
 > so a multi-file bot iterates locally just fine — `--harness` only controls what
 > gets **bundled** for submission.
 
-**Runnable example:** `examples/byo/` is exactly this pattern — `my_bot.py` (a
+**Runnable example:** `examples/poker/byo/` is exactly this pattern — `my_bot.py` (a
 pre-existing hand-strength bot, knows nothing about Arena) + `strategy.py` (the
 `act()` adapter that imports it and maps to a legal action). Try it:
-`./poker submit --harness examples/byo/ --competition <id> --dry-run`.
+`./arena submit --harness examples/poker/byo/ --competition <id> --dry-run`.
 
 - **Trained weights / solver tables?** Ship them under `assets/` (up to 100 MiB)
   and load them in `act()` — they get bundled and run server-side:
-  `./poker submit --strategy strategy.py --assets weights/ --competition <id>`
+  `./arena submit --strategy strategy.py --assets weights/ --competition <id>`
 - **The only contract is the function.** What's inside — minimax, CFR, a
   PyTorch policy, a preflop chart — is yours. Map `table → your input` and
   `your output → a legal action`, and you're done.
@@ -211,10 +211,10 @@ pre-existing hand-strength bot, knows nothing about Arena) + `strategy.py` (the
 
 | Tool | Cost | Proves | Does NOT prove |
 |---|---|---|---|
-| `./poker selfplay` / `eval` | free, unlimited | no crashes, no illegal actions, direction, relative bb/100, speed | your official score |
-| `./poker submit --dry-run` | free, no key | the whole submit pipeline + bundle is server-legal | a real score |
-| `./poker pack` | free | builds & validates `bundle.zip` for manual inspection | — |
-| `./poker live` | needs key, not metered | same bot vs the live Playground/Tournament | still online, not the sandbox panel |
+| `./arena selfplay` / `eval` | free, unlimited | no crashes, no illegal actions, direction, relative bb/100, speed | your official score |
+| `./arena submit --dry-run` | free, no key | the whole submit pipeline + bundle is server-legal | a real score |
+| `./arena pack` | free | builds & validates `bundle.zip` for manual inspection | — |
+| `./arena live` | needs key, not metered | same bot vs the live Playground/Tournament | still online, not the sandbox panel |
 
 **Local self-play details (what you're actually scoring against):**
 - Opponents are a difficulty ladder: `random`/`call`/`loose` (easy) → `tight`
@@ -244,4 +244,4 @@ pre-existing hand-strength bot, knows nothing about Arena) + `strategy.py` (the
 - [ ] `submit --dry-run` passes (bundle is server-legal)
 - [ ] You actually changed something meaningful (PvP TrueSkill restarts on resubmit)
 - [ ] PvP: you have an attempt left today (3/UTC-day), and `--replace` if a bot is still running
-- [ ] Then: `./poker submit --strategy strategy.py --competition <id> [--pvp]`
+- [ ] Then: `./arena submit --strategy strategy.py --competition <id> [--pvp]`
