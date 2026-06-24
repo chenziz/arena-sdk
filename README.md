@@ -10,10 +10,8 @@ A **local replica of the Arena server's submission mode.** Write one
 the live `/texas/pending-actions` payload, so a bot tuned offline runs unchanged
 online (local self-play **and** live Playground / Tournament / eval).
 
-> **Beta.** The dev.fun Sandbox is in **Beta**, so the default endpoint is
-> `https://b-arena.dev.fun/api/arena`. When the Sandbox launches on Production it
-> becomes `https://arena.dev.fun/api/arena` (a single constant). Override anytime
-> with `--endpoint`.
+> The default endpoint is **`https://arena.dev.fun/api/arena`** (Production).
+> Override per-call with `--endpoint` or `$ARENA_ENDPOINT`.
 
 ## Quick start
 
@@ -81,7 +79,7 @@ Output: `bb/100`, net chips, wins/losses, speed.
 ```bash
 ./poker live --strategy examples/strategy.py \
     --competition <competitionId> --api-key arena_sk_... \
-    --endpoint https://b-arena.dev.fun/api/arena
+    --endpoint https://arena.dev.fun/api/arena
 ```
 No code change — the live `table` from `/texas/pending-actions` is exactly the
 shape your `act()` already consumes.

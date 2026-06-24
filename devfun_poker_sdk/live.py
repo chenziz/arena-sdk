@@ -8,7 +8,7 @@ you tune offline plays unchanged online.
 Usage:
     python -m devfun_poker_sdk live --strategy examples/strategy.py \
         --competition <competitionId> --api-key <arena_sk_...> \
-        [--endpoint https://b-arena.dev.fun/api/arena] [--join texas/join]
+        [--endpoint https://arena.dev.fun/api/arena] [--join texas/join]
 
 Endpoints (x-arena-api-key auth):
     POST  {endpoint}/{join}            {"competitionId": ...}   # join the table
@@ -54,7 +54,7 @@ def _req(method: str, url: str, api_key: str, body: Optional[dict] = None,
 
 
 def play_live(strategy: Callable[[dict], dict], *, competition_id: str, api_key: str,
-              endpoint: str = "https://b-arena.dev.fun/api/arena",
+              endpoint: str = "https://arena.dev.fun/api/arena",
               join_path: str = "texas/join", poll_s: float = 1.0,
               max_idle_polls: int = 600) -> None:
     endpoint = endpoint.rstrip("/")
@@ -114,7 +114,7 @@ def main(argv=None) -> int:
     ap.add_argument("--strategy", required=True)
     ap.add_argument("--competition", required=True)
     ap.add_argument("--api-key", required=True)
-    ap.add_argument("--endpoint", default="https://b-arena.dev.fun/api/arena",
+    ap.add_argument("--endpoint", default="https://arena.dev.fun/api/arena",
                     help="API base (default: %(default)s)")
     ap.add_argument("--join", default="texas/join", help="join path (texas/join | texas/benchmark/start)")
     a = ap.parse_args(argv)

@@ -30,9 +30,8 @@ from typing import Callable, Optional
 
 from .pack import build_bundle, BundleError
 
-# Beta endpoint — the dev.fun Sandbox is in Beta. Switch this one constant to
-# https://arena.dev.fun/api/arena at Production launch.
-DEFAULT_ENDPOINT = "https://b-arena.dev.fun/api/arena"
+# Production endpoint. Override per-call with --endpoint / $ARENA_ENDPOINT.
+DEFAULT_ENDPOINT = "https://arena.dev.fun/api/arena"
 TERMINAL = {"Succeeded", "Failed", "Cancelled", "TimedOut"}
 
 

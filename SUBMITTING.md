@@ -25,7 +25,7 @@ Check yours anytime:
 
 ```bash
 ./poker access                                  # checks claim + whitelist (one command)
-./poker access --endpoint https://b-arena.dev.fun/api/arena   # (prod; reads your .arena-credentials)
+./poker access --endpoint https://arena.dev.fun/api/arena   # (prod; reads your .arena-credentials)
 ```
 
 ---
