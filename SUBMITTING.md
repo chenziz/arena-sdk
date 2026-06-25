@@ -136,8 +136,8 @@ Your hole cards:
   (`sandbox_strategy_invalid`). `reasoning_text` is optional (logged to your
   decision trace). `pack`/`submit` flag a tuple-returning bot before you submit.
 
-One file, three uses: `selfplay` (local), `live` (your machine vs the live API),
-`submit` (the sandbox runs it). Tune once, byte-for-byte. See `examples/poker/strategy.py`.
+Same file, two uses: `selfplay` (local) and `submit` (the sandbox runs it). Tune
+once, byte-for-byte. See `examples/poker/strategy.py`.
 
 ## 3b. Reading the table — position & decisions
 
@@ -197,8 +197,8 @@ decision. Assume:
 - **In-memory state persists within a run.** The module is imported once and
   `act()` is called for every hand of the match, so globals / loaded models stay
   live across hands. Don't rely on disk or on anything surviving across submissions.
-- **Outbound network is allowed** (but latency-risky under the 10s cap — see the
-  LLM note below).
+- **Outbound network is allowed**, but a call risks the ~10s cap — prefer
+  precomputed weights/charts under `assets/` over a live API call per decision.
 - The runner **legalizes** your action against `allowedActions`; still, return a
   legal one.
 
@@ -231,15 +231,6 @@ cp examples/poker/strategy.py strategy.py     # then edit the heuristics
 ./arena selfplay --strategy strategy.py --hands 2000
 ```
 
-Want to experiment with an **LLM**? `examples/poker/llm_strategy.py` asks a model
-(any OpenAI-compatible API) per action, with a safe heuristic fallback.
-
-> ⚠️ The sandbox **allows** outbound network, so a runtime-LLM `act()` *can* call
-> your model server-side — but **each decision is capped at ~10s**, so model
-> latency (cold starts, slow providers) risks a timeout that forfeits the spot.
-> For speed and determinism, distilling the policy offline into a chart/weights
-> under `assets/` and reading it from a plain `act()` is the safer bet.
-
 ### (b) Already have a bot → wrap it in `act()`
 
 Your engine is untouched; you add a thin adapter:
@@ -257,7 +248,7 @@ def act(table: dict) -> dict:
 > on the server. Put every `.py` in one dir (entry = `strategy.py`) and submit the
 > dir: `./arena submit --harness mybot_dir/ --competition <id>`. `pack`/`submit`
 > import the bundle **in isolation** and fail locally if a module is missing — so a
-> broken bundle can't cost you a submission. (Local `selfplay`/`live` resolve
+> broken bundle can't cost you a submission. (Local `selfplay` resolves
 > sibling imports either way; `--harness` only controls what gets bundled.)
 
 Runnable example: `examples/poker/byo/` — `my_bot.py` (a pre-existing hand-strength
@@ -274,22 +265,18 @@ all fine. Map `table → your input` and `your output → a legal action`.
 
 | Tool | Cost | Proves | Does NOT prove |
 |---|---|---|---|
-| `selfplay` / `eval` | free | no crashes, no illegal actions, direction, relative bb/100, speed | your official score |
+| `selfplay` | free | no crashes, no illegal actions, direction, relative bb/100, speed | your official score |
 | `submit --dry-run` | free, no key | the bundle is server-legal + the submit pipeline | a real score |
 | `pack` | free | builds `bundle.zip` for manual inspection | — |
-| `live` | needs key, not metered | the bot vs the live Playground/Tournament | the sandbox panel |
 
-**Local self-play** runs a difficulty ladder of built-in opponents —
-`random`/`call`/`loose` (easy) → `tight` → **`gto`** (hard: Monte-Carlo equity +
-pot odds) → `mixed` (rotation); `--opponent self` is your bot vs itself, and
-`--players 2..6`. The metric is raw `bb/100` with seat rotation + seed for
-fairness.
+**Local self-play** runs built-in opponents — `random`/`call`/`loose` (easy) →
+`tight` → `mixed` (rotation); `--opponent self` is your bot vs itself, and
+`--players 2..6`. The metric is raw `bb/100` with seat rotation + seed for fairness.
 
 **Local score ≠ leaderboard score.** The server uses a stronger reference panel
 and variance reduction; the local panel is simple heuristics on plain bb/100. Use
 self-play to catch bugs and check direction, not to predict your rank — the
-official number always comes from a real `submit` (PvE) or `live` eval. (Faithful
-local parity — a bundled panel + variance adjustment — is planned.)
+official number always comes from a real `submit`.
 
 ## Checklist before you spend a submission
 
@@ -299,4 +286,3 @@ local parity — a bundled panel + variance adjustment — is planned.)
 - [ ] You changed something meaningful (PvP TrueSkill restarts on resubmit)
 - [ ] PvP: an attempt left today (3/UTC-day) + `--replace` if a bot is still running
 - [ ] `./arena submit --strategy strategy.py --competition <id> [--pvp]`
-</content>

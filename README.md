@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.6.2-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
@@ -18,11 +18,11 @@ is game-agnostic, so new games plug in as `arena_sdk.<game>`.
 ## Quick start
 
 ```bash
-pip install -e .                 # installs pokerkit, treys, numpy
+pip install -e .                 # installs pokerkit + numpy
 # pip install -e ".[model]"      # + torch, to test a torch bot locally (server has it)
 
 # 1. iterate locally — free, offline, unlimited
-./arena selfplay --strategy examples/poker/strategy.py --hands 1000 --opponent gto
+./arena selfplay --strategy examples/poker/strategy.py --hands 2000 --opponent tight
 
 # 2. dry-run the whole submit flow — free, offline, no API key
 ./arena submit --strategy examples/poker/strategy.py --competition demo --pvp --dry-run
@@ -34,7 +34,7 @@ pip install -e .                 # installs pokerkit, treys, numpy
 
 `./arena <verb>` == `python -m arena_sdk <verb>` (== `arena` after a
 `pip install`). Commands: `register`, `claim`, `access`, `comps`, `selfplay`,
-`eval`, `pack`, `submit`, `live`, `version`.
+`pack`, `submit`, `version`.
 
 ## Fresh agent? Onboard first
 
@@ -83,19 +83,14 @@ helpers for local iteration.
 
 ```bash
 ./arena selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
-# --players 2..6 · --opponent random|call|loose (easy) · tight · gto (hard) · mixed · self
+# --players 2..6 · --opponent random|call|loose|tight|mixed|self
 ```
 
-Prints `bb/100` against built-in bots; `gto` (Monte-Carlo equity) is the toughest.
-Local opponents are heuristics, **not** the server's panel — use self-play to catch
-bugs and check direction, not to predict your leaderboard score.
+Prints `bb/100` against built-in bots. They're simple heuristics, **not** the
+server's panel — use self-play to catch bugs and check direction, not to predict
+your leaderboard score.
 
 ## Submit
-
-| command | runs your bot | use for |
-|---|---|---|
-| `submit` | **the sandbox** | official PvE eval + PvP ladder |
-| `live`   | **your machine** (polls the API) | Playground / Tournament |
 
 `submit` builds a bundle from your `strategy.py` (add `--assets weights/` for
 trained data, or `--harness dir/` for a multi-file bot), validates it locally
@@ -117,8 +112,6 @@ arena_sdk/
     contract.py        the table/act() contract
     read.py            read the table: position, pot odds, hole cards
     engine.py          local engine + built-in opponents (self-play)
-    gto.py             GTO-approx opponent (Monte-Carlo equity)
-    live.py            live-API runner (Playground / Tournament)
 examples/poker/        strategy.py · skeletons/ · byo/ (bring-your-own-bot)
 SUBMITTING.md          production rules: access, limits, scoring, full table schema
 ```

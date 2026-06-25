@@ -91,10 +91,8 @@ def bot_loose(table: dict, **_: Any) -> dict:
     return {"action": "call"}
 
 
-from .gto import act as bot_gto  # GTO-approx opponent (MC equity + pot odds)
-
 OPPONENTS = {"tight": bot_tight, "loose": bot_loose, "random": bot_random,
-             "call": bot_call, "gto": bot_gto}
+             "call": bot_call}
 
 
 # ── pokerkit State → Arena `table` JSON (server-identical shape) ─────────────
@@ -311,7 +309,7 @@ def run_match(hero_fn: Callable, *, hands: int = 500, opponent: str = "tight",
     if opponent == "self":
         opps = [hero_fn] * (players - 1)            # your bot vs your bot
     elif opponent == "mixed":
-        rot = [bot_gto, bot_tight, bot_loose, bot_random, bot_call]
+        rot = [bot_tight, bot_loose, bot_random, bot_call]
         opps = rot[: players - 1]
     else:
         opps = [OPPONENTS.get(opponent, bot_tight)] * (players - 1)

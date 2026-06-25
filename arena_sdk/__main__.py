@@ -1,8 +1,6 @@
 """CLI:  python -m arena_sdk selfplay --strategy examples/poker/strategy.py
-        python -m arena_sdk eval     --strategy examples/poker/strategy.py
         python -m arena_sdk pack     --strategy examples/poker/strategy.py
         python -m arena_sdk submit   --strategy examples/poker/strategy.py --competition <id>
-        python -m arena_sdk live     --strategy examples/poker/strategy.py --competition <id> --api-key ...
 """
 from __future__ import annotations
 
@@ -14,7 +12,7 @@ from .poker.contract import load_strategy
 from .poker.engine import run_match, OPPONENTS
 
 # Subcommands that own their own argparse — route argv straight to them.
-_DELEGATED = {"pack", "submit", "live", "comps"}
+_DELEGATED = {"pack", "submit", "comps"}
 
 
 def _add_common(sp):
@@ -49,22 +47,18 @@ def main(argv=None) -> int:
             from .pack import main as _m
         elif cmd == "submit":
             from .submit import main as _m
-        elif cmd == "comps":
+        else:  # comps
             from .comps import main as _m
-        else:  # live
-            from .poker.live import main as _m
         return _m(rest)
 
     ap = argparse.ArgumentParser(
         prog="arena",
         description="dev.fun Arena SDK — build, test, and submit Arena agents.",
         epilog="more subcommands (run `<cmd> --help`): register · claim · access · "
-               "comps · pack · submit · live · version")
+               "comps · pack · submit · version")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sp1 = sub.add_parser("selfplay", help="fast local self-play vs simple bots")
-    _add_common(sp1); sp1.add_argument("--hands", type=int, default=500)
-    sp2 = sub.add_parser("eval", help="longer eval run -> bb/100")
-    _add_common(sp2); sp2.add_argument("--hands", type=int, default=5000)
+    sp1 = sub.add_parser("selfplay", help="local self-play vs built-in bots -> bb/100")
+    _add_common(sp1); sp1.add_argument("--hands", type=int, default=2000)
     args = ap.parse_args(argv)
 
     strat = load_strategy(args.strategy)

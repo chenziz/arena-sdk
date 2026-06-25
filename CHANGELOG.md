@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 — lightweight: one job, done well
+Trimmed to the core purpose — turn any bot (or nothing) into a sandbox-submittable
+program, with no misunderstanding on position or format. Removed everything that
+wasn't that:
+- **Removed `live` (the live-API Playground/Tournament runner)** — a different
+  product from sandbox submission. **Removed `eval`** (it was just `selfplay`
+  with more hands; use `selfplay --hands`). CLI is now 8 verbs:
+  register / claim / access / comps / selfplay / pack / submit / version.
+- **Removed the `gto` opponent and the `treys` dependency**, and the runtime-LLM
+  example. Self-play keeps the simple heuristics (random/call/loose/tight/mixed/self).
+- Deps are now just `pokerkit` (local engine) + `numpy` (mirrors the server);
+  `pip install -e ".[model]"` still adds torch. ~370 fewer lines.
+
+
 ## 0.6.2 — local env mirrors the server runtime
 - **`numpy` is now a dependency** (the sandbox preinstalls it), and `pip install
   -e ".[model]"` adds `torch` — so a numpy/torch model bot self-plays + packs

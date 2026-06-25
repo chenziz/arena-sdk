@@ -13,7 +13,7 @@ STRATEGY = ROOT / "examples" / "poker" / "strategy.py"
 
 from arena_sdk import (run_match, load_strategy, normalize_action,
                               build_bundle, BundleError, submit)
-from arena_sdk.poker.engine import bot_gto, bot_call
+from arena_sdk.poker.engine import bot_call
 
 
 def test_contract_normalize():
@@ -51,11 +51,6 @@ def test_selfplay_is_position_fair():
     # guards against the positional-bias regression.
     r = run_match(bot_call, hands=1500, opponent="self", seed=11)
     assert abs(r["bb_per_100"]) < 8, r["bb_per_100"]
-
-
-def test_gto_beats_tight():
-    r = run_match(bot_gto, hands=1500, opponent="tight", seed=7)
-    assert r["bb_per_100"] > 0, r["bb_per_100"]
 
 
 def test_pack_catches_missing_sibling():
@@ -113,22 +108,6 @@ def test_bb_option_labeled_raise():
     for k in ("canFold", "canCall", "canCheck", "canBet", "canRaise",
               "canAllIn", "minRaiseTo", "allInToAmount"):
         assert k in allowed, k
-
-
-def test_gto_equity_sanity():
-    from arena_sdk.poker.gto import _equity, _HAVE_TREYS
-    if not _HAVE_TREYS:
-        return
-    aa = _equity(["Ah", "Ad"], [], iters=400)
-    trash = _equity(["7c", "2d"], [], iters=400)
-    assert aa is not None and aa > 0.80, aa
-    assert trash is not None and trash < aa, (trash, aa)
-
-
-def test_gto_norm_card():
-    from arena_sdk.poker.gto import _norm
-    assert _norm("Ah") == "Ah" and _norm("tD") == "Td"
-    assert _norm("10h") == "Th"                 # 3-char no longer breaks the suit
 
 
 def test_normalize_action_edges():
