@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,33 @@ _SAMPLE_TABLE = {
         {"type": "BlindPosted", "street": "Preflop",
          "summary": {"action": "post", "amount": 20, "toAmount": 20, "seatNumber": 2}}],
 }
+
+
+# Packages the sandbox image does NOT preinstall (it has only stdlib + numpy +
+# torch). The SDK itself depends on treys/pokerkit locally, so it's an easy trap
+# to import one into a strategy that then ImportErrors server-side.
+_NOT_ON_SERVER = {
+    "treys": "not installed — vendor it (pure-Python, fine) or precompute equities",
+    "pokerkit": "not installed — vendor it (pure-Python, fine) or avoid it in act()",
+    "eval7": "not installed AND has a C extension — it ImportErrors even if you "
+             "bundle it (the sandbox has no compiler); use a pure-Python equity routine",
+    "onnxruntime": "not installed and not pure-Python — won't run; use torch instead",
+}
+_IMPORT_RE = re.compile(r"^\s*(?:import|from)\s+([A-Za-z0-9_]+)", re.M)
+
+
+def _warn_unavailable_imports(raw: bytes) -> None:
+    """Warn (don't fail) if a bundled .py imports a package the server lacks."""
+    z = zipfile.ZipFile(io.BytesIO(raw))
+    mods: set = set()
+    for n in z.namelist():
+        if n.startswith("harness/") and n.endswith(".py"):
+            try:
+                mods |= set(_IMPORT_RE.findall(z.read(n).decode("utf-8", "ignore")))
+            except Exception:
+                pass
+    for m in sorted(mods & set(_NOT_ON_SERVER)):
+        print(f"[pack] ⚠ '{m}' {_NOT_ON_SERVER[m]}.")
 
 
 class BundleError(Exception):
@@ -235,6 +263,7 @@ def build_bundle(strategy: Optional[str] = None, *, harness: Optional[str] = Non
     # ── import-isolation: catch missing-sibling-import BEFORE you submit ─────
     if validate:
         _validate_isolation(raw)
+        _warn_unavailable_imports(raw)
 
     if out:
         Path(out).write_bytes(raw)

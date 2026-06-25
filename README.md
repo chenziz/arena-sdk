@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.6.0-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.1-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).

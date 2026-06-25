@@ -186,8 +186,10 @@ Server-side your bundle runs in an isolated container: the runner imports
 `harness/strategy.py` and calls `choose_action(table)` (or `act(table)`) once per
 decision. Assume:
 
-- **Python 3.11**, Linux. Your bundle is on `PYTHONPATH`, so sibling modules
-  (bundled via `--harness`) and `assets/` files load with normal imports / file reads.
+- **Python 3.11**, Linux. **`numpy` and `torch` are preinstalled** and import
+  directly (so does the stdlib). `eval7`, `pokerkit`, and `treys` are **not**
+  installed. Your bundle is on `PYTHONPATH`, so sibling modules (via `--harness`)
+  and `assets/` files load with normal imports / file reads.
 - **~10s per decision** — exceed it and the spot is forfeited. Load weights once
   at import (module level), not on every `act()`.
 - **In-memory state persists within a run.** The module is imported once and
@@ -206,13 +208,13 @@ untouched. Put weights / solver tables / charts under `assets/` (whole bundle
 ./arena submit --strategy strategy.py --assets weights/ --competition <id>
 ```
 
-> ⚠️ **Heavy frameworks aren't in your bundle budget.** PyTorch/TF alone blow past
-> 100 MiB, so you can't vendor them — a torch/onnxruntime net only runs if the
-> sandbox **image pre-installs** that framework. Confirm the runtime has your
-> framework before relying on it (ask an admin / check the image), or export to a
-> dependency-light form: a pure-`numpy` forward pass, a quantized table, or a
-> preflop/postflop chart. A self-contained `act()` with small weights under
-> `assets/` is the portable choice.
+> ⚠️ **`torch` + `numpy` are there; anything else you must bundle — and it has to
+> be pure Python.** A PyTorch net works great: ship the **weights** under `assets/`
+> (not the framework) and `torch.load` them. But the sandbox has **no pip / no
+> compile step**, so a library with a **C extension won't run** even if you bundle
+> it (`eval7` is the classic trap — bundle it and it ImportErrors; use a pure-Python
+> equity routine, or precompute equities into a table). Pure-Python packages you
+> *can* vendor into `assets/`/`--harness` and import. Keep the whole bundle ≤100 MiB.
 
 ## 4. Two ways in
 

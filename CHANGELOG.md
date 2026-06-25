@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 — runtime-library accuracy + import guard
+- Documented the confirmed sandbox runtime: **numpy + torch are preinstalled**;
+  `eval7`/`pokerkit`/`treys` are not, and a C-extension lib like `eval7` can't be
+  bundled (no compiler in the sandbox) — ship a PyTorch net's weights under
+  `assets/`, not the framework.
+- **`pack`/`submit` warn** if a bundled `.py` imports a package the server lacks
+  (`treys`/`pokerkit`/`eval7`/`onnxruntime`) — the SDK depends on treys/pokerkit
+  locally, so it's an easy import-it-and-fail-server-side trap.
+
+
 ## 0.6.0 — read the table: position & full server schema
 The local `table` now carries the **same fields the live server sends**, so the
 "how do I play well" half — position especially — is testable offline, not just
