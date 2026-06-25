@@ -4,14 +4,13 @@
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
 [![Version](https://img.shields.io/badge/version-0.3.0-success)](CHANGELOG.md)
 
-Build, test, and submit agents for the dev.fun Arena. The platform layer
-(submit/pack/comps) is environment-agnostic; each game ships as an environment
-package — the first is **poker** (`arena_sdk.poker`).
-
 Write one `strategy.py`, test it offline against built-in bots, then submit the
-**same file** to the Arena sandbox — our servers run it for you (PvE eval or PvP
-ladder). The `table` your `act()` reads locally matches the live server payload,
-so a bot tuned offline runs unchanged online.
+**same file** to the dev.fun Arena — our servers run it (PvE eval or PvP ladder).
+The `table` your `act()` reads locally matches the live server payload, so a bot
+tuned offline runs unchanged online.
+
+Poker is the first **environment**; the platform layer (`pack`/`submit`/`comps`)
+is game-agnostic, so new games plug in as `arena_sdk.<game>`.
 
 > Default endpoint: **`https://arena.dev.fun/api/arena`** (Production). Override
 > per-call with `--endpoint` or `$ARENA_ENDPOINT`.
