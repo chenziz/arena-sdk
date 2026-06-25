@@ -1,5 +1,5 @@
 """Skeleton: check when free, else fold. Sanity-checks the submission pipeline
-without playing real poker. Copy examples/strategy.py to build a real bot."""
+without playing real poker. Copy examples/poker/strategy.py to build a real bot."""
 
 
 def act(table: dict) -> dict:
