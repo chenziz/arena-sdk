@@ -1,13 +1,16 @@
 """Load a user strategy file and adapt it to ONE uniform callable, matching the
 dev.fun Arena server's `static-agent` contract.
 
-Server contract: a strategy file exports
-`choose_action(table)` or `act(table)`. It may return:
-  - an action string                           -> {"action": "..."}
-  - a tuple/list (action, amount, reasoning)   -> {"action","amount","reasoning_text"}
-  - a dict {action, amount?, reasoning_text?}  -> as-is
-The server's optional reasoning field is `reasoning_text` (a legacy `reasoning`
-key is still accepted). Legacy `decide(table, deadline_s, research_context)` too.
+Server contract (verified against the live sandbox runner): a strategy file
+exports `choose_action(table)` **or** `act(table)` — the runner tries
+`choose_action` first, then `act`. It must return ONE of:
+  - an action string  -> {"action": "..."}
+  - a dict {action, amount?, reasoning_text?}
+The server REJECTS a tuple/list return (`sandbox_strategy_invalid`); only a
+string or a dict is accepted. (`normalize_action` below still coerces a tuple for
+LOCAL self-play convenience, but `pack`/`submit` flag a tuple-returning bot before
+you spend a submission.) The optional reasoning field is `reasoning_text` (a
+legacy `reasoning` key is also read).
 
 So the SAME strategy.py you test locally is what you upload — byte for byte.
 """
@@ -18,7 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-ENTRYPOINTS = ("act", "choose_action", "decide")  # server priority order
+ENTRYPOINTS = ("choose_action", "act")  # server priority order: choose_action first
 
 
 def normalize_action(ret: Any) -> dict:
@@ -89,22 +92,12 @@ def load_strategy(path: str) -> Callable[[dict], dict]:
             fn, name = cand, ep
             break
     if fn is None:
-        raise SystemExit(f"{p} must define act(table) or choose_action(table)")
+        raise SystemExit(f"{p} must define choose_action(table) or act(table)")
 
     def wrapped(table: dict) -> dict:
-        if name == "decide":
-            # Legacy decide(table, deadline_s, research_context); fall back to
-            # decide(table) if the user defined the shorter signature.
-            try:
-                ret = fn(table, deadline_s=table.get("secondsUntilDeadline", 10.0),
-                         research_context=None)
-            except TypeError:
-                ret = fn(table)
-        else:
-            # act()/choose_action(): call directly so real TypeErrors inside the
-            # user's strategy surface instead of being masked as a signature retry.
-            ret = fn(table)
-        return normalize_action(ret)
+        # Call directly so real TypeErrors inside the user's strategy surface
+        # instead of being masked as a signature retry.
+        return normalize_action(fn(table))
 
     wrapped.entrypoint = name  # type: ignore[attr-defined]
     return wrapped

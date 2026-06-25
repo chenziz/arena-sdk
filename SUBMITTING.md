@@ -119,12 +119,47 @@ Your hole cards:
   `max(rng["min"], min(amount, rng["max"]))`.
 - The server offers **only one** of `bet`/`raise` per spot — use whichever is in
   `availableActions`.
-- Return a string, a dict `{action, amount, reasoning_text}`, or a tuple
-  `(action, amount, reasoning_text)`. `reasoning_text` is optional (the server's
-  field name; it's logged into your decision trace).
+- Return **a string** (`"fold"`) **or a dict** `{action, amount, reasoning_text}`.
+  The server accepts only those two — a **tuple/list is rejected**
+  (`sandbox_strategy_invalid`). `reasoning_text` is optional (logged to your
+  decision trace). `pack`/`submit` flag a tuple-returning bot before you submit.
 
 One file, three uses: `selfplay` (local), `live` (your machine vs the live API),
 `submit` (the sandbox runs it). Tune once, byte-for-byte. See `examples/poker/strategy.py`.
+
+## 3a. The runtime (what your bot runs in)
+
+Server-side your bundle runs in an isolated container: the runner imports
+`harness/strategy.py` and calls `choose_action(table)` (or `act(table)`) once per
+decision. Assume:
+
+- **Python 3.11**, Linux. Your bundle is on `PYTHONPATH`, so sibling modules
+  (bundled via `--harness`) and `assets/` files load with normal imports / file reads.
+- **~10s per decision** — exceed it and the spot is forfeited. Load weights once
+  at import (module level), not on every `act()`.
+- **In-memory state persists within a run.** The module is imported once and
+  `act()` is called for every hand of the match, so globals / loaded models stay
+  live across hands. Don't rely on disk or on anything surviving across submissions.
+- **Outbound network is allowed** (but latency-risky under the 10s cap — see the
+  LLM note below).
+- The runner **legalizes** your action against `allowedActions`; still, return a
+  legal one.
+
+**Shipping a model / solver / neural net.** Same `act()` contract — your engine is
+untouched. Put weights / solver tables / charts under `assets/` (whole bundle
+≤100 MiB) and load them in `act()`:
+
+```bash
+./arena submit --strategy strategy.py --assets weights/ --competition <id>
+```
+
+> ⚠️ **Heavy frameworks aren't in your bundle budget.** PyTorch/TF alone blow past
+> 100 MiB, so you can't vendor them — a torch/onnxruntime net only runs if the
+> sandbox **image pre-installs** that framework. Confirm the runtime has your
+> framework before relying on it (ask an admin / check the image), or export to a
+> dependency-light form: a pure-`numpy` forward pass, a quantized table, or a
+> preflop/postflop chart. A self-contained `act()` with small weights under
+> `assets/` is the portable choice.
 
 ## 4. Two ways in
 
@@ -142,10 +177,11 @@ cp examples/poker/strategy.py strategy.py     # then edit the heuristics
 Want to experiment with an **LLM**? `examples/poker/llm_strategy.py` asks a model
 (any OpenAI-compatible API) per action, with a safe heuristic fallback.
 
-> ⚠️ A runtime-LLM `act()` works in `selfplay`/`live`, but **the sandbox blocks
-> outbound network** — submitted there it silently plays the fallback. To use an
-> LLM in a submission, distill it offline into a chart/lookup table, ship that
-> under `assets/`, and read it from a plain `act()`.
+> ⚠️ The sandbox **allows** outbound network, so a runtime-LLM `act()` *can* call
+> your model server-side — but **each decision is capped at ~10s**, so model
+> latency (cold starts, slow providers) risks a timeout that forfeits the spot.
+> For speed and determinism, distilling the policy offline into a chart/weights
+> under `assets/` and reading it from a plain `act()` is the safer bet.
 
 ### (b) Already have a bot → wrap it in `act()`
 

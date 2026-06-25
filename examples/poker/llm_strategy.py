@@ -7,10 +7,11 @@ network, bad reply) — so it never crashes a match.
 
 WHERE IT WORKS
   • `selfplay` / `eval` / `live` — yes. Your machine has network + your API key.
-  • Sandbox `submit` — the model call usually FAILS (the sandbox blocks outbound
-    network), so it silently plays the FALLBACK heuristic. Don't expect real LLM
-    play in a submission. To use an LLM's strength on the server, distill its
-    decisions offline into a lookup table and ship that under `assets/`.
+  • Sandbox `submit` — the sandbox ALLOWS outbound network, so the model call can
+    work server-side — BUT each decision is capped at ~10s, so provider latency
+    risks a timeout (which forfeits the spot) and you must ship your key. For a
+    reliable submission, distill the policy offline into a lookup table / weights
+    under `assets/` and read it from a plain `act()` instead.
 
 CONFIG (env): OPENAI_API_KEY, optional OPENAI_BASE_URL (default OpenAI),
               optional OPENAI_MODEL (default gpt-4o-mini).

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0 — align to the live sandbox runner (runtime contract)
+Audited the SDK against the **actual server-side runner** (`STATIC_AGENT_RUNNER`
+on `origin/develop`), not just the published skill docs. Found three places where
+a bot could pass locally but be rejected by the runner — all now caught before a
+metered submission:
+- **Entrypoint order matches the runner:** `choose_action` first, then `act`
+  (was `act` first). Dropped `decide` — it is **not** a server entrypoint, so a
+  `decide`-only bot would have failed server-side; the SDK no longer pretends it works.
+- **Return type:** the runner accepts **only a string or a dict** and rejects a
+  tuple/list (`sandbox_strategy_invalid`). `pack`/`submit` now hard-fail a
+  tuple-returning bot with a clear message; docs no longer advertise tuples.
+- **Network:** the sandbox **allows** outbound network (`allow_internet=true`) —
+  the old "network is blocked" claim was wrong. Corrected the LLM guidance: a
+  runtime model call *can* work but risks the ~10s per-decision timeout.
+- **New `## Runtime` section in SUBMITTING.md:** Python 3.11, ~10s/decision, bundle
+  on `PYTHONPATH`, in-memory state persists within a run, the runner legalizes your
+  action — plus **how to ship a model/solver/NN** (weights under `assets/`, ≤100 MiB;
+  heavy frameworks like PyTorch must be pre-installed in the sandbox image, so
+  confirm or export to a numpy/lookup-table form).
+
 ## 0.4.1 — prod-readiness audit
 Full field-level audit of every SDK call against the live prod `__introspection`
 (148 KB). Everything matched — multipart field names (`competitionId`/`file`/

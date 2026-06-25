@@ -85,15 +85,17 @@ def _validate_isolation(raw: bytes) -> None:
                 "strategy", {harness!r} + "/strategy.py")
             m = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(m)                 # import error -> exit 2
-            fn = (getattr(m, "act", None) or getattr(m, "choose_action", None)
-                  or getattr(m, "decide", None))
+            fn = (getattr(m, "choose_action", None) or getattr(m, "act", None))
             if fn is None:
                 print("NO_ENTRYPOINT"); sys.exit(3)
             try:
                 r = fn({_SAMPLE_TABLE!r})
-                print("ACT_OK " + json.dumps(r, default=str)[:200])
             except Exception as e:
                 print("ACT_THREW " + type(e).__name__ + ": " + str(e)[:160])
+            else:
+                if not isinstance(r, (str, dict)):     # server: str|dict only
+                    print("ACT_BADTYPE " + type(r).__name__); sys.exit(4)
+                print("ACT_OK " + json.dumps(r, default=str)[:200])
         """)
         env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
         try:
@@ -113,8 +115,15 @@ def _validate_isolation(raw: bytes) -> None:
         # NO_ENTRYPOINT is signalled by an exact exit code (3), not a substring, so
         # source/traceback text can't misclassify it.
         if proc.returncode == 3:
-            raise BundleError("strategy.py defines no entrypoint — add an "
-                              "act(table) (or choose_action(table) / decide(...)) function.")
+            raise BundleError("strategy.py defines no entrypoint — add a "
+                              "choose_action(table) (or act(table)) function.")
+        if proc.returncode == 4:
+            bad = (out.rsplit("ACT_BADTYPE", 1)[-1].strip() or "that type")
+            raise BundleError(
+                f"your strategy returned a `{bad}` — the server only accepts a string "
+                '(e.g. "fold") or a dict (e.g. {"action": "raise", "amount": 120}); a '
+                "tuple/list is rejected server-side (sandbox_strategy_invalid). Wrap it "
+                "in a dict before submitting.")
         if proc.returncode != 0:
             tail = out.splitlines()[-1] if out else f"exit {proc.returncode}"
             # Classify by the exception CLASS on the traceback's final line only.
