@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.5.0-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.0-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
@@ -69,8 +69,14 @@ def act(table: dict) -> dict:
 - The full `table` schema (hole cards, board, blinds, seats, `allowedActions`) is in
   **[SUBMITTING.md](SUBMITTING.md)**.
 
-Start from `examples/poker/strategy.py` (tight-aggressive) or `examples/poker/skeletons/`.
-Already have a bot? Wrap it into `act()` — see [SUBMITTING.md §4](SUBMITTING.md).
+Start from `examples/poker/strategy.py` (a **position-aware** tight-aggressive
+baseline) or `examples/poker/skeletons/`. Already have a bot? Wrap it into `act()`
+— see [SUBMITTING.md §4](SUBMITTING.md).
+
+**Reading the table** (position, pot odds, hole cards) is the real skill — the
+table has no `position` field, you derive it. [SUBMITTING.md §3b](SUBMITTING.md)
+shows how; `arena_sdk.poker.read` (`is_button`, `to_call`, `pot_odds`) has the
+helpers for local iteration.
 
 ## Local self-play (offline, free)
 
@@ -108,6 +114,7 @@ arena_sdk/
   comps.py             platform: list competitions
   poker/               the poker environment
     contract.py        the table/act() contract
+    read.py            read the table: position, pot odds, hole cards
     engine.py          local engine + built-in opponents (self-play)
     gto.py             GTO-approx opponent (Monte-Carlo equity)
     live.py            live-API runner (Playground / Tournament)

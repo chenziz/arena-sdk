@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0 — read the table: position & full server schema
+The local `table` now carries the **same fields the live server sends**, so the
+"how do I play well" half — position especially — is testable offline, not just
+the submission mechanics.
+- **`build_table` emits the real `/pending-actions` schema:** `smallBlindChips`/
+  `bigBlindChips`, `currentBet`, `minRaiseTo`, `currentSeatNumber`,
+  `actionDeadlineAt`, `seats[].status`/`currentBetChips`/`totalCommittedChips`, and
+  `recentEvents` (synthesized `BlindPosted` + `ActionTaken`). Replaces the old
+  thin table (which lacked blinds/committed/history and used `secondsUntilDeadline`).
+- **`arena_sdk.poker.read` helpers:** `is_button`, `button_seat`, `to_call`,
+  `pot_odds`, `hero`, `hole_cards`, `can`. **Position is derived** (the table has
+  no `position`/`button` field — heads-up the button is the small-blind poster in
+  `recentEvents`); validated 400/400 across rotated seats.
+- **`examples/poker/strategy.py` is now position-aware** (opens wider in position)
+  and **self-contained** — it inlines `_is_button` because a submitted bot can't
+  import `arena_sdk` (the sandbox has only stdlib + numpy + torch).
+- **SUBMITTING.md:** real `table` schema + a new **§3b "Reading the table —
+  position & decisions"** (derive position, pot odds, `recentEvents` as memory).
+- 21 tests (+3: real-schema fields, position invariant, pot-odds).
+
 ## 0.5.0 — align to the live sandbox runner (runtime contract)
 Audited the SDK against the **actual server-side runner** (`STATIC_AGENT_RUNNER`
 on `origin/develop`), not just the published skill docs. Found three places where

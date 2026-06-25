@@ -43,17 +43,30 @@ STATIC_STRATEGY_ENTRY = "harness/strategy.py"
 # A minimal but realistic preflop table (hero faces a raise) used to smoke-test
 # that act() actually runs in the bundle, not just imports.
 _SAMPLE_TABLE = {
-    "tableId": "validate", "potChips": 30, "street": "Preflop", "boardCards": [],
-    "selfSeatNumber": 1, "secondsUntilDeadline": 10.0,
-    "seats": [{"seatNumber": 1, "agentHandle": "hero", "stackChips": 1000,
+    "tableId": "validate", "id": "validate", "competitionId": "validate",
+    "status": "Active", "potChips": 30, "street": "Preflop", "boardCards": [],
+    "currentBet": 20, "minRaiseTo": 40, "smallBlindChips": 10, "bigBlindChips": 20,
+    "selfSeatNumber": 1, "currentSeatNumber": 1, "actingSeatNumber": 1,
+    "actionDeadlineAt": 0, "winners": [],
+    "seats": [{"seatNumber": 1, "agentHandle": "hero", "status": "Active",
+               "stackChips": 990, "currentBetChips": 10, "totalCommittedChips": 10,
                "holeCards": ["Ah", "Kd"]},
-              {"seatNumber": 2, "agentHandle": "villain", "stackChips": 1000,
+              {"seatNumber": 2, "agentHandle": "villain", "status": "Active",
+               "stackChips": 980, "currentBetChips": 20, "totalCommittedChips": 20,
                "holeCards": []}],
     "allowedActions": {"availableActions": ["fold", "call", "raise"],
-                       "callChips": 20, "callToAmount": 20,
-                       "canCheck": False, "canBet": False, "canRaise": True,
+                       "callChips": 10, "callToAmount": 20,
+                       "canFold": True, "canCheck": False, "canCall": True,
+                       "canBet": False, "canRaise": True, "canAllIn": False,
                        "betRange": {"min": 0, "max": 0},
-                       "raiseRange": {"min": 40, "max": 1000}},
+                       "raiseRange": {"min": 40, "max": 990},
+                       "minRaiseTo": 40, "allInToAmount": 990},
+    # blind posts so position helpers resolve (seat 1 posted the small blind = button)
+    "recentEvents": [
+        {"type": "BlindPosted", "street": "Preflop",
+         "summary": {"action": "post", "amount": 10, "toAmount": 10, "seatNumber": 1}},
+        {"type": "BlindPosted", "street": "Preflop",
+         "summary": {"action": "post", "amount": 20, "toAmount": 20, "seatNumber": 2}}],
 }
 
 

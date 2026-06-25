@@ -103,17 +103,40 @@ def _street_label(state: State) -> str:
     return "Preflop" if n <= 0 else ("Flop", "Turn", "River")[min(max(n - 3, 0), 2)]
 
 
-def build_table(state: State, hero: int, table_id: str, big_blind: int) -> dict:
+def build_table(state: State, hero: int, table_id: str, *, small_blind: int = 1,
+                big_blind: int = 2, starting_stack: int = 0,
+                events: Optional[list] = None) -> dict:
+    """Build the server-identical `table` dict for the seat `hero`. Emits the same
+    fields the live `/texas/pending-actions` table carries — seats[] with
+    currentBetChips/totalCommittedChips/status, blinds, currentBet, recentEvents —
+    so position/decision logic you test here behaves the same online."""
     is_my_turn = state.actor_index == hero
-    pot = (sum(p.amount for p in state.pots) if state.pots else 0) + sum(state.bets or [])
     bets = list(state.bets) if state.bets else []
+    pot = (sum(p.amount for p in state.pots) if state.pots else 0) + sum(bets)
+    n = len(state.stacks)
+    try:
+        statuses = list(state.statuses)            # True = still in the hand
+    except Exception:
+        statuses = [True] * n
     seats = []
-    for i in range(len(state.stacks)):
+    for i in range(n):
         hole = list(state.hole_cards[i]) if i < len(state.hole_cards) else []
+        stack = int(state.stacks[i])
+        street_bet = int(bets[i]) if i < len(bets) else 0
+        total = int(starting_stack - stack) if starting_stack else street_bet
+        in_hand = statuses[i] if i < len(statuses) else True
+        status = "Folded" if not in_hand else ("AllIn" if stack == 0 else "Active")
         seats.append({
+            "seatId": f"seat-{i+1}",
             "seatNumber": i + 1,
+            "agentId": "hero" if i == hero else f"bot_{i+1}",
+            "agentName": "hero" if i == hero else f"bot_{i+1}",
             "agentHandle": "hero" if i == hero else f"bot_{i+1}",
-            "stackChips": int(state.stacks[i]),
+            "status": status,
+            "stackChips": stack,
+            "currentBetChips": street_bet,        # committed THIS street
+            "totalCommittedChips": total,         # committed across the hand
+            "payoutChips": None,
             "holeCards": [repr(c) for c in hole] if (i == hero and hole) else [],
         })
     avail: list[str] = []
@@ -143,27 +166,42 @@ def build_table(state: State, hero: int, table_id: str, big_blind: int) -> dict:
                 avail.append("raise"); can_raise, rmin, rmax = True, lo, hi
             else:
                 avail.append("bet"); can_bet, bmin, bmax = True, lo, hi
+    actor_seat = (state.actor_index + 1) if state.actor_index is not None else None
     return {
-        "tableId": table_id,
-        "potChips": int(pot),
+        "id": table_id, "tableId": table_id, "tableNumber": 1,
+        "competitionId": "local", "status": "Active",
         "street": _street_label(state),
+        "potChips": int(pot),
+        "currentBet": int(max(bets) if bets else 0),  # highest committed this street
+        "minRaiseTo": int(rmin) if rmin else None,
+        "actionDeadlineAt": int((time.time() + 10) * 1000),   # epoch ms (real field)
+        "currentSeatNumber": actor_seat,
+        "actingSeatNumber": actor_seat,
         "boardCards": [repr(c) for c in state.board_cards],
+        "smallBlindChips": int(small_blind),
+        "bigBlindChips": int(big_blind),
+        "buyInChips": int(starting_stack),
         "selfSeatNumber": hero + 1,
+        "winners": [],
         "seats": seats,
         "allowedActions": {
             "availableActions": avail,
-            "callChips": int(call_chips), "callToAmount": int(call_to),
-            # full boolean set, matching the server's allowedActions
-            "canFold": "fold" in avail, "canCall": "call" in avail,
-            "canCheck": can_check, "canBet": can_bet, "canRaise": can_raise,
+            "canFold": "fold" in avail, "canCheck": can_check,
+            "canCall": "call" in avail, "canBet": can_bet, "canRaise": can_raise,
             "canAllIn": False,           # local shoves go through bet/raise-to-max;
                                          # the server's discrete all_in verb is server-side
+            "callAmount": int(call_chips), "callChips": int(call_chips),
+            "callToAmount": int(call_to) if call_to else None,
+            "minBet": int(bmin) if bmin else None,
+            "minRaiseTo": int(rmin) if rmin else None,
+            "maxCommit": int(max(bmax, rmax)),
+            "allInToAmount": int(max(bmax, rmax)),
             "betRange": {"min": int(bmin), "max": int(bmax)},
             "raiseRange": {"min": int(rmin), "max": int(rmax)},
-            "minRaiseTo": int(rmin),     # raise min as a TO-amount (0 if not raising)
-            "allInToAmount": int(max(bmax, rmax)),   # the all-in ceiling (max to-amount)
+            "amountSemantics": "to-amount",        # amount = TOTAL committed this street
+            "reasoningRequired": False,
         },
-        "secondsUntilDeadline": 10.0,
+        "recentEvents": list(events or [])[-50:],  # server caps history; blinds + actions
     }
 
 
@@ -208,10 +246,28 @@ def play_one_hand(hero_fn: Callable, opponents: list[Callable], *, starting_stac
     seat_fn = {hero: hero_fn}
     for idx, s in enumerate(s for s in range(n) if s != hero):
         seat_fn[s] = opponents[idx % len(opponents)]
+    # Seed the hand's event log with the blind posts, derived from the ACTUAL
+    # posted bets (pokerkit decides which seat is SB/BB; in heads-up the small
+    # blind is the button). This lets a strategy derive its position locally
+    # exactly as it would from the server's recentEvents — don't assume a seat.
+    def _name(i: int) -> str:
+        return "hero" if i == hero else f"bot_{i+1}"
+    events: list = []
+    init_bets = [int(b) for b in (state.bets or [])]
+    for amt in (small_blind, big_blind):           # SB event before BB (chronological)
+        for i, b in enumerate(init_bets):
+            if b == amt:
+                events.append({"type": "BlindPosted", "street": "Preflop",
+                               "summary": {"action": "post", "amount": amt,
+                                           "toAmount": amt, "seatNumber": i + 1,
+                                           "agentName": _name(i)}})
+                break
     steps = 0
     while state.status and state.actor_index is not None and steps < max_actions:
         actor = state.actor_index
-        table = build_table(state, actor, tid, big_blind)
+        table = build_table(state, actor, tid, small_blind=small_blind,
+                            big_blind=big_blind, starting_stack=starting_stack,
+                            events=events)
         fn = seat_fn[actor]
         try:
             action = fn(table)
@@ -229,7 +285,14 @@ def play_one_hand(hero_fn: Callable, opponents: list[Callable], *, starting_stac
                       "'raise', 'amount'?: int}. Fix it before submitting.", file=sys.stderr)
                 warn["shown"] = True
             action = {"action": "fold"}
+        street_now = _street_label(state)
         _apply(state, action, big_blind)
+        to_amt = int(state.bets[actor]) if state.bets and actor < len(state.bets) else None
+        events.append({
+            "type": "ActionTaken", "street": street_now,
+            "summary": {"action": (action.get("action") or "").lower(),
+                        "amount": action.get("amount"), "toAmount": to_amt,
+                        "seatNumber": actor + 1, "agentName": _name(actor)}})
         steps += 1
     return int(state.stacks[hero]) - starting_stack
 

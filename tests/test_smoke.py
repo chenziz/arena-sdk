@@ -105,7 +105,7 @@ def test_bb_option_labeled_raise():
         raw_starting_stacks=(200, 200), player_count=2)
     state.check_or_call()                       # SB/button limp-calls → BB to act
     actor = state.actor_index
-    allowed = build_table(state, actor, "t", 2)["allowedActions"]
+    allowed = build_table(state, actor, "t", big_blind=2)["allowedActions"]
     aa = allowed["availableActions"]
     assert "raise" in aa and "bet" not in aa, aa
     # full allowedActions surface matches the server (so a bot reading these
@@ -211,6 +211,56 @@ def test_dry_run_mock_matches_real_shape():
     assert sdk_top - set(final) <= {"error", "errorCode"}, set(final)  # mock representative
     assert any(k in real["pvp"] for k in ("trueskillScore", "scaleRating", "rating"))
     assert any(k in final["pvp"] for k in ("trueskillScore", "scaleRating", "rating"))
+
+
+def test_table_has_real_server_fields():
+    # build_table emits the real /pending-actions fields so position/decision
+    # logic is testable locally exactly as on the server.
+    from pokerkit import NoLimitTexasHoldem
+    from arena_sdk.poker.engine import _AUTO, build_table
+    st = NoLimitTexasHoldem.create_state(
+        automations=_AUTO, ante_trimming_status=True, raw_antes=0,
+        raw_blinds_or_straddles=(1, 2), min_bet=2,
+        raw_starting_stacks=(200, 200), player_count=2)
+    t = build_table(st, st.actor_index, "t", small_blind=1, big_blind=2,
+                    starting_stack=200)
+    for k in ("smallBlindChips", "bigBlindChips", "currentBet", "currentSeatNumber",
+              "actionDeadlineAt", "recentEvents", "minRaiseTo"):
+        assert k in t, k
+    for k in ("status", "currentBetChips", "totalCommittedChips"):
+        assert k in t["seats"][0], k
+
+
+def test_position_inference_matches_blinds():
+    # is_button must equal "I posted the small blind" at every hand, across the
+    # rotated hero seat (guards the position-reading the docs teach).
+    from arena_sdk import is_button, to_call, run_match
+    seen, res = {}, {"ok": 0, "btn": 0, "bb": 0}
+    def probe(t):
+        tid = t["tableId"]
+        if tid not in seen:
+            seen[tid] = True
+            myblind = next((e["summary"]["amount"] for e in t["recentEvents"]
+                            if e["type"] == "BlindPosted"
+                            and e["summary"]["seatNumber"] == t["selfSeatNumber"]), None)
+            truth = myblind == t["smallBlindChips"]
+            if is_button(t) == truth:
+                res["ok"] += 1
+            res["btn" if is_button(t) else "bb"] += 1
+        a = t["allowedActions"]["availableActions"]
+        if "check" in a:
+            return {"action": "check"}
+        return {"action": "call"} if ("call" in a and to_call(t) <= 2) else {"action": "fold"}
+    run_match(probe, hands=200, opponent="call", players=2, seed=3)
+    assert res["ok"] == res["btn"] + res["bb"] and res["ok"] > 0, res   # all matched
+    assert res["btn"] > 0 and res["bb"] > 0, res                        # both positions seen
+
+
+def test_pot_odds_helper():
+    from arena_sdk import pot_odds, to_call
+    t = {"potChips": 100, "allowedActions": {"callChips": 50}}
+    assert to_call(t) == 50 and abs(pot_odds(t) - (50 / 150)) < 1e-9
+    assert pot_odds({"potChips": 100, "allowedActions": {"callChips": 0}}) == 0.0
 
 
 if __name__ == "__main__":

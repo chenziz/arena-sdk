@@ -83,28 +83,40 @@ The full `table` you receive:
 ```jsonc
 {
   "tableId": "t_123",
-  "street": "Flop",                       // Preflop | Flop | Turn | River
+  "street": "Flop",                       // Preflop | Flop | Turn | River | Showdown
   "potChips": 60,
+  "currentBet": 40,                       // highest committed by any seat THIS street
+  "minRaiseTo": 80,                       // min legal raise TO-amount (null if can't raise)
+  "smallBlindChips": 10, "bigBlindChips": 20,
   "boardCards": ["Qd", "9c", "2h"],       // 2-char strings: rank + suit, e.g. "Ah", "Td"
   "selfSeatNumber": 1,                     // which seat is YOU
+  "currentSeatNumber": 1,                  // whose turn it is (== you when you're asked)
+  "actionDeadlineAt": 1782000000000,       // epoch ms — act before this
   "seats": [
-    {"seatNumber": 1, "agentHandle": "you", "stackChips": 940,
+    {"seatNumber": 1, "agentHandle": "you", "status": "Active", "stackChips": 940,
+     "currentBetChips": 0,                //   committed by this seat THIS street
+     "totalCommittedChips": 60,           //   committed by this seat THIS hand
      "holeCards": ["Ah", "Kd"]},          // ⚠️ YOUR hole cards live HERE, under your
-    {"seatNumber": 2, "agentHandle": "opp", "stackChips": 980,
-     "holeCards": []}                      //    seat — NOT at table["holeCards"].
+    {"seatNumber": 2, "agentHandle": "opp", "status": "Active", "stackChips": 920,
+     "currentBetChips": 40, "totalCommittedChips": 80, "holeCards": []}  // NOT table["holeCards"]
   ],
   "allowedActions": {
     "availableActions": ["fold", "call", "raise"],   // the ONLY legal verbs right now
-    "callChips": 20,                       // chips to add to call (0 = checking is free)
-    "callToAmount": 20,
+    "callChips": 40,                       // chips to add to call (0 = checking is free)
+    "callToAmount": 40,
     "canFold": true, "canCall": true, "canCheck": false,
     "canBet": false, "canRaise": true, "canAllIn": true,   // test these, not field names
     "betRange":   {"min": 0,  "max": 0},   // when "bet"  is legal
-    "raiseRange": {"min": 40, "max": 940}, // when "raise" is legal (min/max TOTAL this street)
-    "minRaiseTo": 40,                      // raise min as a TO-amount
-    "allInToAmount": 980                   // total to shove
+    "raiseRange": {"min": 80, "max": 940}, // when "raise" is legal (min/max TOTAL this street)
+    "minRaiseTo": 80, "allInToAmount": 940,
+    "amountSemantics": "to-amount"         // amount = TOTAL committed this street
   },
-  "secondsUntilDeadline": 10.0
+  "recentEvents": [                        // hand history (capped) — your "memory"
+    {"type": "BlindPosted", "summary": {"seatNumber": 1, "amount": 10}},
+    {"type": "BlindPosted", "summary": {"seatNumber": 2, "amount": 20}},
+    {"type": "ActionTaken", "street": "Flop",
+     "summary": {"seatNumber": 2, "action": "bet", "amount": 40, "toAmount": 40}}
+  ]
 }
 ```
 
@@ -126,6 +138,47 @@ Your hole cards:
 
 One file, three uses: `selfplay` (local), `live` (your machine vs the live API),
 `submit` (the sandbox runs it). Tune once, byte-for-byte. See `examples/poker/strategy.py`.
+
+## 3b. Reading the table — position & decisions
+
+The hard part isn't the action format; it's reading the spot. Two things every
+decent bot needs:
+
+**Position — you derive it (there is NO `position`/`button`/`dealer` field).**
+Heads-up, the button posts the **small blind** and acts **last postflop** (in
+position). Find who posted the small blind in `recentEvents`:
+
+```python
+def is_button(table):                      # heads-up: button == small-blind poster
+    sb = table["smallBlindChips"]
+    for ev in table.get("recentEvents", []):
+        s = ev.get("summary", {})
+        if ev.get("type") == "BlindPosted" and s.get("amount") == sb:
+            return s.get("seatNumber") == table["selfSeatNumber"]
+    return False
+```
+
+Position is the single biggest, cheapest edge: open wider and bluff more **in
+position**, play tighter and pot-control **out of position**.
+
+**What it costs vs what's in the pot.** `callChips` is what you must add to call;
+your pot odds are `call / (pot + call)` — call when your equity clears that:
+
+```python
+call = table["allowedActions"]["callChips"]
+pot_odds = call / (table["potChips"] + call) if call else 0.0
+```
+
+`recentEvents` is your **memory** — who bet/raised this street, sizing, who's
+aggressive. `seats[].currentBetChips` (this street) and `totalCommittedChips`
+(this hand) tell you how committed each player is.
+
+These are exactly the helpers in `arena_sdk.poker.read` (`is_button`, `to_call`,
+`pot_odds`, `hero`, `can`) — use them when iterating **locally**; **inline** the
+ones you need into your submitted `strategy.py` (the sandbox has no `arena_sdk`).
+The shipped `examples/poker/strategy.py` is a position-aware baseline doing exactly
+this. Because the local `table` carries the same `recentEvents` + blinds, your
+position logic behaves identically in self-play and online.
 
 ## 3a. The runtime (what your bot runs in)
 
