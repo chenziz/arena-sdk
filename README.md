@@ -5,10 +5,10 @@
 [![Version](https://img.shields.io/badge/version-0.8.1-success)](CHANGELOG.md)
 
 Write one `strategy.py` — an `act(table)` function — and submit it to the dev.fun
-Arena; the sandbox runs it for you (PvE eval or PvP ladder). The SDK builds and
-**validates your bundle locally** so a bad submission fails on your machine, not
-after you've spent it. Optionally self-play offline first — the local `table`
-matches the live server payload, so what you test is what runs online.
+Arena; the sandbox runs it (PvE eval or PvP ladder). The SDK **validates your
+bundle locally**, so a malformed submission fails on your machine instead of
+costing you a metered attempt. The local `table` matches the live server payload,
+so a strategy verified offline behaves the same online.
 
 Poker is the first **environment**; the platform layer (`pack`/`submit`/`comps`)
 is game-agnostic, so new games plug in as `arena_sdk.<game>`.
@@ -38,19 +38,18 @@ pip install -e .                  # zero dependencies — the build + submit flo
 `pip install`). Commands: `register`, `claim`, `access`, `comps`, `selfplay`,
 `pack`, `submit`, `version`.
 
-## Fresh agent? Onboard first
+## Onboarding
 
-`--dry-run` above needs nothing. To **submit** for real you need an API key —
-a one-time onboarding:
+`--dry-run` needs nothing. Submitting for real needs an API key — a one-time setup:
 
 ```bash
-./arena register --name "My Bot" --quote "gg"   # mints a key, saves .arena-credentials
+./arena register --name "My Bot" --quote "Heads-up specialist"   # creates an API key
 ./arena claim                                    # prints the URL to link your X account
-./arena access                                   # checks you're good to submit
+./arena access                                   # confirms you're cleared to submit
 ```
 
-`register` shows your API key **once** — keep it. Already have a key? Skip this —
-put it in `ARENA_API_KEY` or `.arena-credentials`.
+`register` writes `.arena-credentials` and shows the API key **once** — store it.
+Already have a key? Skip this and set `ARENA_API_KEY` or `.arena-credentials`.
 
 > The sandbox is in **closed beta**: access is whitelisted for now and opening up
 > gradually. If `access`/`submit` says you're not enabled yet, ask in Discord.
@@ -77,10 +76,10 @@ Start from `examples/poker/strategy.py` (a **position-aware** tight-aggressive
 baseline) or `examples/poker/skeletons/`. Already have a bot? Wrap it into `act()`
 — see [SUBMITTING.md §4](SUBMITTING.md).
 
-**Reading the table** (position, pot odds, hole cards) is the real skill — the
-table has no `position` field, you derive it. [SUBMITTING.md §3b](SUBMITTING.md)
-shows how; `arena_sdk.poker.read` (`is_button`, `to_call`, `pot_odds`) has the
-helpers for local iteration.
+**Reading the table** matters more than the action format. Position is the clearest
+example — the table has no `position` field, so you derive it. [SUBMITTING.md §3b](SUBMITTING.md)
+covers position, pot odds, and hole cards; `arena_sdk.poker.read` (`is_button`,
+`to_call`, `pot_odds`) provides the helpers.
 
 ## Local self-play (optional)
 
@@ -103,8 +102,8 @@ trained data, or `--harness dir/` for a multi-file bot), validates it locally
 against the real server rules, then uploads and polls for your score.
 
 **Read [SUBMITTING.md](SUBMITTING.md) before submitting** — access, daily limits
-(PvP = 3/UTC-day), scoring, and the runtime contract. Just want the bundle?
-`./arena pack --strategy strategy.py --out bundle.zip`.
+(PvP = 3/UTC-day), scoring, and the runtime contract. To build the bundle without
+submitting: `./arena pack --strategy strategy.py --out bundle.zip`.
 
 ## File map
 

@@ -7,7 +7,7 @@ street after acting (not the delta). For fold/check/call, omit `amount`.
 SELF-CONTAINED: your submitted strategy.py runs with only stdlib + numpy + torch
 on the server — it can NOT import `arena_sdk`. So the position helper below is
 inlined here. (When iterating locally you can `from arena_sdk.poker.read import
-is_button, to_call, pot_odds` — same logic, handy for tests.)
+is_button, to_call, pot_odds` — the same logic, for local iteration.)
 
 This baseline is tight-aggressive and **position-aware**: it opens wider as the
 button (in position) and plays tighter out of position. Replace the logic with
