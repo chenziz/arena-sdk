@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 — numpy is now opt-in
+- **`numpy` moved out of the default install** into the `[model]` extra (with
+  `torch`). A heuristic/rule bot needs neither — the only default dep is `pokerkit`
+  (the local self-play engine). `pip install -e ".[model]"` adds numpy+torch to
+  test a model bot locally.
+- Removed two stale references to the deleted `live` command (submit/comps docstrings).
+
+
 ## 0.7.0 — lightweight: one job, done well
 Trimmed to the core purpose — turn any bot (or nothing) into a sandbox-submittable
 program, with no misunderstanding on position or format. Removed everything that

@@ -18,7 +18,7 @@ def _classify(c: dict) -> str:
 
     `skillFile` is the most reliable signal (the server routes each comp to its
     skill, e.g. `sandbox-pvp.md` / `sandbox-pve.md`); the comp name is the
-    fallback. `?` = not a sandbox-submission comp (likely live-play — use `live`).
+    fallback. `?` = not a sandbox-submission comp (likely a live-play lobby).
     """
     cfg = c.get("config") or c
     bench = cfg.get("benchmark") or {}

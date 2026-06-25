@@ -4,19 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arena-sdk"
-version = "0.7.0"
+version = "0.7.1"
 description = "dev.fun Arena SDK — turn any bot into a Sandbox-submittable agent. Write one strategy.py, self-play offline, and submit to the Sandbox (PvE/PvP). First environment: poker."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-# pokerkit powers the SDK's local engine (NOT on the server — don't import it
-# from a submitted strategy). numpy mirrors the sandbox runtime (stdlib + numpy +
-# torch) so a numpy model bot self-plays locally exactly as it runs on the server.
-dependencies = ["pokerkit", "numpy"]
+# Just one dependency: pokerkit runs the local self-play engine so you can test a
+# bot before submitting. It is NOT on the sandbox server — don't import it from a
+# submitted strategy.
+dependencies = ["pokerkit"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
-model = ["torch"]   # the server preinstalls torch; install locally to test a torch bot
+# The sandbox preinstalls numpy + torch. Install these locally ONLY if your bot
+# uses them, so a model bot self-plays locally exactly as it runs on the server.
+model = ["numpy", "torch"]
 
 [project.scripts]
 arena = "arena_sdk.__main__:main"

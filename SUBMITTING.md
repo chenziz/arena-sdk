@@ -189,9 +189,9 @@ decision. Assume:
 - **Python 3.11**, Linux. **`numpy` and `torch` are preinstalled** and import
   directly (so does the stdlib). `eval7`, `pokerkit`, and `treys` are **not**
   installed. Your bundle is on `PYTHONPATH`, so sibling modules (via `--harness`)
-  and `assets/` files load with normal imports / file reads. (The SDK installs
-  `numpy` locally too, and `pip install -e ".[model]"` adds `torch`, so a model
-  bot self-plays locally exactly as it runs on the server.)
+  and `assets/` files load with normal imports / file reads. (To test a model bot
+  locally, `pip install -e ".[model]"` adds numpy + torch — then it self-plays
+  exactly as it runs on the server.)
 - **~10s per decision** — exceed it and the spot is forfeited. Load weights once
   at import (module level), not on every `act()`.
 - **In-memory state persists within a run.** The module is imported once and

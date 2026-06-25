@@ -1,6 +1,6 @@
 """Submit a strategy to the dev.fun Arena Sandbox and watch it score.
 
-The SAME `strategy.py` you self-play locally and run live is what you upload.
+The SAME `strategy.py` you self-play locally is what you upload.
 The server runs it in an isolated sandbox against the panel (PvE) or against other
 submitted bots (PvP). PvE vs PvP is decided by the COMPETITION, not a flag here:
 submit to an eval comp -> PvE; submit to a sandbox-PvP comp -> PvP ladder.
