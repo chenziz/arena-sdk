@@ -22,9 +22,13 @@ def hole_cards(table: dict) -> list:
 
 
 def button_seat(table: dict) -> Optional[int]:
-    """Seat number of the button. Heads-up, the button posts the **small blind**,
-    so we find the seat that posted it in `recentEvents`. Returns None if the blind
-    posts aren't in the events yet."""
+    """Seat number of the button — **heads-up only** (the Arena sandbox is HU).
+    Heads-up the button posts the small blind, so we return the seat that posted
+    it in `recentEvents`. With more than 2 seats the button is NOT the small-blind
+    poster, so this returns None rather than mislead. None too if the blind posts
+    aren't in the events yet."""
+    if len([s for s in (table.get("seats") or [])]) > 2:
+        return None
     sb = table.get("smallBlindChips")
     for ev in table.get("recentEvents") or []:
         s = ev.get("summary") or {}
@@ -34,7 +38,8 @@ def button_seat(table: dict) -> Optional[int]:
 
 
 def is_button(table: dict) -> bool:
-    """Are YOU the button (heads-up: the small blind, in position postflop)?"""
+    """Are YOU the button (heads-up: the small blind, in position postflop)?
+    Heads-up only — always False with more than 2 seats (see `button_seat`)."""
     btn = button_seat(table)
     return btn is not None and btn == table.get("selfSeatNumber")
 

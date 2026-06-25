@@ -71,31 +71,46 @@ _SAMPLE_TABLE = {
 }
 
 
-# Packages the sandbox image does NOT preinstall (it has only stdlib + numpy +
-# torch). The SDK itself depends on treys/pokerkit locally, so it's an easy trap
-# to import one into a strategy that then ImportErrors server-side.
-_NOT_ON_SERVER = {
-    "treys": "not installed — vendor it (pure-Python, fine) or precompute equities",
-    "pokerkit": "not installed — vendor it (pure-Python, fine) or avoid it in act()",
-    "eval7": "not installed AND has a C extension — it ImportErrors even if you "
-             "bundle it (the sandbox has no compiler); use a pure-Python equity routine",
-    "onnxruntime": "not installed and not pure-Python — won't run; use torch instead",
-}
-_IMPORT_RE = re.compile(r"^\s*(?:import|from)\s+([A-Za-z0-9_]+)", re.M)
+# The sandbox image has ONLY the stdlib + numpy + torch. Anything else a bundled
+# .py imports — that isn't a module you also bundled — will ImportError on the
+# server, even though it may be installed in your local venv. We catch that here.
+_FROM_RE = re.compile(r"^\s*from\s+([A-Za-z0-9_]+)", re.M)
+_IMPORT_RE = re.compile(r"^\s*import\s+([^\n#]+)", re.M)
+_SERVER_HAS = set(getattr(sys, "stdlib_module_names", ())) | {"numpy", "torch"}
+_CEXT_HINT = {"eval7", "onnxruntime"}   # won't run even if vendored (C extension)
+
+
+def _top_imports(src: str) -> set:
+    """Top-level package names imported by `src` — handles `from x import ...`,
+    `import a, b as c`, and dotted `import a.b`."""
+    mods = set(_FROM_RE.findall(src))
+    for line in _IMPORT_RE.findall(src):
+        for part in line.split(","):
+            tok = part.strip().split(" ")[0].split(".")[0]   # drop `as ...` and `.sub`
+            if tok.isidentifier():
+                mods.add(tok)
+    return mods
 
 
 def _warn_unavailable_imports(raw: bytes) -> None:
-    """Warn (don't fail) if a bundled .py imports a package the server lacks."""
+    """Warn (don't fail) if a bundled .py imports a top-level package that isn't on
+    the sandbox (stdlib + numpy + torch) and isn't something you bundled yourself."""
     z = zipfile.ZipFile(io.BytesIO(raw))
-    mods: set = set()
+    bundled, imported = set(), set()
     for n in z.namelist():
+        if n.startswith("harness/"):                       # names you can import
+            top = n[len("harness/"):].split("/")[0]
+            bundled.add(top[:-3] if top.endswith(".py") else top)
         if n.startswith("harness/") and n.endswith(".py"):
             try:
-                mods |= set(_IMPORT_RE.findall(z.read(n).decode("utf-8", "ignore")))
+                imported |= _top_imports(z.read(n).decode("utf-8", "ignore"))
             except Exception:
                 pass
-    for m in sorted(mods & set(_NOT_ON_SERVER)):
-        print(f"[pack] ⚠ '{m}' {_NOT_ON_SERVER[m]}.")
+    for m in sorted(imported - _SERVER_HAS - bundled):
+        extra = " (a C-extension package won't run even if vendored)" if m in _CEXT_HINT else \
+                " — vendor it under your bundle (pure-Python only) or precompute"
+        print(f"[pack] ⚠ '{m}' isn't on the sandbox (only stdlib + numpy + torch){extra}; "
+              "it would ImportError server-side.")
 
 
 class BundleError(Exception):

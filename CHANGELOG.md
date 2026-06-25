@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.2 — Codex review fixes
+- **Bundle import-guard is now an allowlist**, not a 4-package denylist: `pack`/
+  `submit` warn about ANY top-level import that isn't stdlib + numpy + torch + a
+  module you bundled (catches `requests`/`pandas`/`pokerkit`/etc. that pass locally
+  but ImportError on the server). Handles `import a, b as c` and dotted imports.
+- **`is_button`/`button_seat` are heads-up only** (the sandbox is HU): they now
+  return None/False with >2 seats instead of mislabeling the small-blind poster as
+  the button in multiway local self-play.
+- Removed remaining stale `live`/`eval` mentions (the `./arena` wrapper header, a
+  `pack` comment that still claimed a `treys` dep). +2 regression tests.
+
+
 ## 0.7.1 — numpy is now opt-in
 - **`numpy` moved out of the default install** into the `[model]` extra (with
   `torch`). A heuristic/rule bot needs neither — the only default dep is `pokerkit`

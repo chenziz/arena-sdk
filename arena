@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Arena SDK CLI wrapper.
-#   ./arena selfplay|eval|pack|submit|comps|access|live|version ...
+#   ./arena register|claim|access|comps|selfplay|pack|submit|version ...
 # Uses the repo .venv if present, else the system python3.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

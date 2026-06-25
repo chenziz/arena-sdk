@@ -242,6 +242,27 @@ def test_pot_odds_helper():
     assert pot_odds({"potChips": 100, "allowedActions": {"callChips": 0}}) == 0.0
 
 
+def test_top_imports_flags_unavailable():
+    # the bundle import-guard must flag a locally-installed-but-not-on-server
+    # package (e.g. pokerkit), across comma / `as` / dotted forms, but not stdlib/numpy.
+    from arena_sdk.pack import _top_imports, _SERVER_HAS
+    got = _top_imports("import json, pokerkit as pk\nfrom os.path import join\nimport numpy.linalg\n")
+    assert {"json", "pokerkit", "os", "numpy"} <= got, got
+    flagged = got - _SERVER_HAS
+    assert "pokerkit" in flagged                       # not on the sandbox -> flagged
+    assert "json" not in flagged and "numpy" not in flagged   # stdlib/numpy -> fine
+
+
+def test_button_is_heads_up_only():
+    from arena_sdk.poker.read import button_seat, is_button
+    hu = {"selfSeatNumber": 2, "smallBlindChips": 1,
+          "seats": [{"seatNumber": 1}, {"seatNumber": 2}],
+          "recentEvents": [{"type": "BlindPosted", "summary": {"amount": 1, "seatNumber": 2}}]}
+    six = {**hu, "seats": [{"seatNumber": i} for i in range(1, 7)]}
+    assert button_seat(hu) == 2 and is_button(hu) is True          # HU: SB poster = button
+    assert button_seat(six) is None and is_button(six) is False    # >2 seats: don't mislead
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
