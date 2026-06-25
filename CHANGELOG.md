@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 — align to the Heads-Up Sandbox PvP contract
+Verified against the live `eval-pvp.md` skill (the Heads-Up Sandbox template) +
+`competition/list-active`. Submission flow, access (`/submissions/settings` →
+`access.sandboxBenchmark.{claimed,whitelisted}`), poll, TrueSkill scoring, and the
+`static-agent`-only rule were already aligned. Closed three gaps:
+- **`poll` now surfaces `pvp.error`** (and flags `pvp.status` Failed/Discarded). The
+  skill stresses a top-level `Succeeded` does **not** mean the bot is healthy — a
+  bot can activate then end `Failed`; that error was previously not printed.
+- **Local `table["allowedActions"]` now matches the server's full surface** —
+  added `canFold`/`canCall`/`canAllIn`, `minRaiseTo`, and `allInToAmount`, so a bot
+  that reads those fields behaves the same locally as online. (`canAllIn` is
+  `false` locally — the local engine reaches all-in via bet/raise-to-max; the
+  server's discrete `all_in` verb is server-side.)
+- **`reasoning` → `reasoning_text`** in the action contract — the server's field
+  name. Tuple/dict returns carry `reasoning_text`; a legacy `reasoning` key is
+  still accepted.
+
 ## 0.3.0 — Arena SDK (env-aware structure)
 - **Renamed `devfun-poker-sdk` → `arena-sdk`** (package `arena_sdk`, CLI `arena`).
   The SDK is now the platform foundation; poker is its **first environment**, not

@@ -290,6 +290,13 @@ def _print_final(st: dict) -> None:
         print(f"  PvP bot {pvp.get('status')} | TrueSkill score = "
               f"{_fmt(score)} (mu={_fmt(mu)}, sigma={_fmt(sigma)}) "
               f"over {pvp.get('completedHands')} hands")
+        # A top-level Succeeded does NOT mean the bot is healthy — a bot can
+        # activate then end Failed. Surface pvp.error so it isn't missed.
+        if pvp.get("error"):
+            print(f"  pvp.error: {pvp['error']}")
+        if pvp.get("status") in ("Failed", "Discarded"):
+            print(f"  ⚠️ bot is not live (pvp.status={pvp.get('status')}) — "
+                  "fix and resubmit")
     if st.get("traceObjectKey"):
         print(f"  trace: {st['traceObjectKey']}")
 

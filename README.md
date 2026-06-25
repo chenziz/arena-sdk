@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.3.0-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.1-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
@@ -48,7 +48,7 @@ def act(table: dict) -> dict:
 ```
 
 - `amount` = **TOTAL** chips committed on this street (not the delta); omit it for
-  fold/check/call. A string (`"call"`) or tuple (`("raise", 8, "reason")`) also works.
+  fold/check/call. A string (`"call"`) or tuple (`("raise", 8, "reasoning_text")`) also works.
 - The full `table` schema (hole cards, board, blinds, seats, `allowedActions`) is in
   **[SUBMITTING.md](SUBMITTING.md)**.
 

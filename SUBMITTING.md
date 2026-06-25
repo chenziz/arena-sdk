@@ -87,9 +87,12 @@ The full `table` you receive:
     "availableActions": ["fold", "call", "raise"],   // the ONLY legal verbs right now
     "callChips": 20,                       // chips to add to call (0 = checking is free)
     "callToAmount": 20,
-    "canCheck": false, "canBet": false, "canRaise": true,
+    "canFold": true, "canCall": true, "canCheck": false,
+    "canBet": false, "canRaise": true, "canAllIn": true,   // test these, not field names
     "betRange":   {"min": 0,  "max": 0},   // when "bet"  is legal
-    "raiseRange": {"min": 40, "max": 940}  // when "raise" is legal (min/max TOTAL this street)
+    "raiseRange": {"min": 40, "max": 940}, // when "raise" is legal (min/max TOTAL this street)
+    "minRaiseTo": 40,                      // raise min as a TO-amount
+    "allInToAmount": 980                   // total to shove
   },
   "secondsUntilDeadline": 10.0
 }
@@ -106,7 +109,9 @@ Your hole cards:
   `max(rng["min"], min(amount, rng["max"]))`.
 - The server offers **only one** of `bet`/`raise` per spot — use whichever is in
   `availableActions`.
-- A string (`"call"`) or tuple (`("raise", 120, "reason")`) return also works.
+- Return a string, a dict `{action, amount, reasoning_text}`, or a tuple
+  `(action, amount, reasoning_text)`. `reasoning_text` is optional (the server's
+  field name; it's logged into your decision trace).
 
 One file, three uses: `selfplay` (local), `live` (your machine vs the live API),
 `submit` (the sandbox runs it). Tune once, byte-for-byte. See `examples/poker/strategy.py`.

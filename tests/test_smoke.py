@@ -19,7 +19,7 @@ from arena_sdk.poker.engine import bot_gto, bot_call
 def test_contract_normalize():
     assert normalize_action("call") == {"action": "call"}
     assert normalize_action(("raise", 8, "3-bet")) == {
-        "action": "raise", "amount": 8, "reasoning": "3-bet"}
+        "action": "raise", "amount": 8, "reasoning_text": "3-bet"}  # server's field name
     assert normalize_action({"action": "fold"}) == {"action": "fold"}
 
 
@@ -105,8 +105,14 @@ def test_bb_option_labeled_raise():
         raw_starting_stacks=(200, 200), player_count=2)
     state.check_or_call()                       # SB/button limp-calls → BB to act
     actor = state.actor_index
-    aa = build_table(state, actor, "t", 2)["allowedActions"]["availableActions"]
+    allowed = build_table(state, actor, "t", 2)["allowedActions"]
+    aa = allowed["availableActions"]
     assert "raise" in aa and "bet" not in aa, aa
+    # full allowedActions surface matches the server (so a bot reading these
+    # locally behaves the same online)
+    for k in ("canFold", "canCall", "canCheck", "canBet", "canRaise",
+              "canAllIn", "minRaiseTo", "allInToAmount"):
+        assert k in allowed, k
 
 
 def test_gto_equity_sanity():

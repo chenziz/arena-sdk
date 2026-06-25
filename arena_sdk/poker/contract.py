@@ -3,10 +3,11 @@ dev.fun Arena server's `static-agent` contract.
 
 Server contract: a strategy file exports
 `choose_action(table)` or `act(table)`. It may return:
-  - an action string                      -> {"action": "..."}
-  - a tuple/list (action, amount, reason) -> {"action","amount","reasoning"}
-  - a dict {action, amount?, reasoning?}  -> as-is
-Legacy `decide(table, deadline_s, research_context)` is also accepted.
+  - an action string                           -> {"action": "..."}
+  - a tuple/list (action, amount, reasoning)   -> {"action","amount","reasoning_text"}
+  - a dict {action, amount?, reasoning_text?}  -> as-is
+The server's optional reasoning field is `reasoning_text` (a legacy `reasoning`
+key is still accepted). Legacy `decide(table, deadline_s, research_context)` too.
 
 So the SAME strategy.py you test locally is what you upload — byte for byte.
 """
@@ -30,7 +31,7 @@ def normalize_action(ret: Any) -> dict:
         if len(ret) >= 2 and ret[1] is not None:
             out["amount"] = ret[1]
         if len(ret) >= 3 and ret[2] is not None:
-            out["reasoning"] = ret[2]
+            out["reasoning_text"] = ret[2]           # server's field name
         return out if out.get("action") else {"action": "fold"}
     if isinstance(ret, dict):
         return ret if ret.get("action") else {"action": "fold"}

@@ -153,9 +153,15 @@ def build_table(state: State, hero: int, table_id: str, big_blind: int) -> dict:
         "allowedActions": {
             "availableActions": avail,
             "callChips": int(call_chips), "callToAmount": int(call_to),
+            # full boolean set, matching the server's allowedActions
+            "canFold": "fold" in avail, "canCall": "call" in avail,
             "canCheck": can_check, "canBet": can_bet, "canRaise": can_raise,
+            "canAllIn": False,           # local shoves go through bet/raise-to-max;
+                                         # the server's discrete all_in verb is server-side
             "betRange": {"min": int(bmin), "max": int(bmax)},
             "raiseRange": {"min": int(rmin), "max": int(rmax)},
+            "minRaiseTo": int(rmin),     # raise min as a TO-amount (0 if not raising)
+            "allInToAmount": int(max(bmax, rmax)),   # the all-in ceiling (max to-amount)
         },
         "secondsUntilDeadline": 10.0,
     }
