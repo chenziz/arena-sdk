@@ -1,6 +1,6 @@
 # Submitting to the dev.fun Arena Sandbox
 
-Your `strategy.py` runs **on our servers**, isolated, against a reference panel
+Your `strategy.py` runs **in the sandbox**, isolated, against a reference panel
 (PvE) or other players' bots (PvP). This page is the contract: the limits, how
 scoring works, and how to get on the board without wasting attempts.
 
@@ -109,7 +109,7 @@ Your hole cards:
 - A string (`"call"`) or tuple (`("raise", 120, "reason")`) return also works.
 
 One file, three uses: `selfplay` (local), `live` (your machine vs the live API),
-`submit` (our servers). Tune once, byte-for-byte. See `examples/poker/strategy.py`.
+`submit` (the sandbox runs it). Tune once, byte-for-byte. See `examples/poker/strategy.py`.
 
 ## 4. Two ways in
 

@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.3.0-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
-**same file** to the dev.fun Arena — our servers run it (PvE eval or PvP ladder).
+**same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
 The `table` your `act()` reads locally matches the live server payload, so a bot
 tuned offline runs unchanged online.
 
@@ -70,7 +70,7 @@ bugs and check direction, not to predict your leaderboard score.
 
 | command | runs your bot | use for |
 |---|---|---|
-| `submit` | **our servers** (sandbox) | official PvE eval + PvP ladder |
+| `submit` | **the sandbox** | official PvE eval + PvP ladder |
 | `live`   | **your machine** (polls the API) | Playground / Tournament |
 
 `submit` builds a bundle from your `strategy.py` (add `--assets weights/` for
