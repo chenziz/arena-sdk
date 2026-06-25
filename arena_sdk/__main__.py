@@ -34,6 +34,12 @@ def main(argv=None) -> int:
         from . import __version__
         print(f"arena-sdk {__version__}")
         return 0
+    if argv and argv[0] == "register":
+        from .auth import register_main
+        return register_main(argv[1:])
+    if argv and argv[0] == "claim":
+        from .auth import claim_main
+        return claim_main(argv[1:])
     if argv and argv[0] == "access":
         from .submit import access_main
         return access_main(argv[1:])
@@ -52,8 +58,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         prog="arena",
         description="dev.fun Arena SDK — build, test, and submit Arena agents.",
-        epilog="more subcommands (run `<cmd> --help`): pack · submit · comps · "
-               "access · live · version")
+        epilog="more subcommands (run `<cmd> --help`): register · claim · access · "
+               "comps · pack · submit · live · version")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sp1 = sub.add_parser("selfplay", help="fast local self-play vs simple bots")
     _add_common(sp1); sp1.add_argument("--hands", type=int, default=500)

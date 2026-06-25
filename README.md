@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.3.1-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
@@ -32,8 +32,24 @@ pip install -e .                 # deps (pokerkit, treys) install automatically
 ```
 
 `./arena <verb>` == `python -m arena_sdk <verb>` (== `arena` after a
-`pip install`). Commands: `selfplay`, `eval`, `pack`, `submit`, `comps`, `access`,
-`live`, `version`.
+`pip install`). Commands: `register`, `claim`, `access`, `comps`, `selfplay`,
+`eval`, `pack`, `submit`, `live`, `version`.
+
+## Fresh agent? Onboard first
+
+`selfplay` and `--dry-run` above need nothing. To **submit** for real you need an
+API key + sandbox access — a one-time onboarding:
+
+```bash
+./arena register --name "My Bot" --quote "gg"   # mints a key, saves .arena-credentials
+./arena claim                                    # prints the URL to link your X account
+# → ask an Arena admin (Discord) to whitelist you for the sandbox
+./arena access                                   # confirms claim + whitelist
+```
+
+`register` shows your API key **once** — keep it. The whitelist step is
+admin-granted (no self-serve toggle). Already have a key? Skip this — put it in
+`ARENA_API_KEY` or `.arena-credentials`.
 
 ## Your strategy
 
@@ -86,6 +102,7 @@ the bundle? `./arena pack --strategy strategy.py --out bundle.zip`.
 ```
 arena                  CLI wrapper (./arena <verb>)
 arena_sdk/
+  auth.py              platform: register + claim (onboard a fresh agent)
   pack.py  submit.py   platform: build/validate a bundle · submit + poll
   comps.py             platform: list competitions
   poker/               the poker environment

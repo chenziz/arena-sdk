@@ -16,28 +16,32 @@ from .submit import _request, resolve_api_key, DEFAULT_ENDPOINT
 def _classify(c: dict) -> str:
     """Best-effort sandbox-submission label.
 
-    The list endpoint usually omits config, so we fall back to the comp name
-    (which is consistently tagged, e.g. "Heads-Up PvP S1" / "Headsup Eval S4").
-    `?` = not a sandbox-submission comp (likely live-play — use `live`).
+    `skillFile` is the most reliable signal (the server routes each comp to its
+    skill, e.g. `sandbox-pvp.md` / `sandbox-pve.md`); the comp name is the
+    fallback. `?` = not a sandbox-submission comp (likely live-play — use `live`).
     """
     cfg = c.get("config") or c
     bench = cfg.get("benchmark") or {}
     pvp = (bench.get("sandboxPvp") or {}) if isinstance(bench, dict) else {}
+    skill = (c.get("skillFile") or "").lower()
     name = (c.get("name") or c.get("title") or "").lower()
-    # Explicit config or a strong name wins; never label PvP from seat count alone
-    # (a heads-up PvE eval also has 2 seats).
-    if pvp.get("enabled") or "pvp" in name:
+    # skillFile is authoritative; then explicit config; then the name. Never label
+    # PvP from seat count alone (a heads-up PvE eval also has 2 seats).
+    if "pvp" in skill or pvp.get("enabled") or "pvp" in name:
         return "PvP"
-    if "eval" in name or "benchmark" in name or "pve" in name:
+    if ("pve" in skill or "eval-sandbox" in skill or "poker-eval" in skill
+            or "eval" in name or "benchmark" in name or "pve" in name):
         return "PvE"
     if cfg.get("mode") == "benchmark":
         return "PvE"
     return "?"
 
 
-def list_active(endpoint: str, api_key: str) -> list:
+def list_active(endpoint: str, api_key: str = "") -> list:
     endpoint = endpoint.rstrip("/")
-    res = _request("GET", f"{endpoint}/competition/list-active", api_key)
+    # /competition/list-active is public (no auth) — a fresh agent can discover
+    # comps before it even has a key.
+    res = _request("GET", f"{endpoint}/competition/list-active", api_key or "")
     comps = res if isinstance(res, list) else (
         res.get("competitions") or res.get("data") or res.get("items") or [])
     if not comps:
@@ -62,7 +66,7 @@ def main(argv=None) -> int:
     ap.add_argument("--endpoint", default=os.environ.get("ARENA_ENDPOINT", DEFAULT_ENDPOINT),
                     help="API base (default: %(default)s)")
     a = ap.parse_args(argv)
-    list_active(a.endpoint, resolve_api_key(a.api_key))
+    list_active(a.endpoint, resolve_api_key(a.api_key, required=False) or "")
     return 0
 
 
