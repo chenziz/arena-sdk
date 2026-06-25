@@ -9,17 +9,16 @@ import json
 import sys
 
 from .poker.contract import load_strategy
-from .poker.engine import run_match, OPPONENTS
 
 # Subcommands that own their own argparse — route argv straight to them.
 _DELEGATED = {"pack", "submit", "comps"}
 
 
-def _add_common(sp):
+def _add_common(sp, opponents):
     sp.add_argument("--strategy", required=True, help="path to strategy.py (act(table))")
     sp.add_argument("--players", type=int, default=2, help="2=HU (default), up to 6")
     sp.add_argument("--opponent", default="tight",
-                    choices=list(OPPONENTS) + ["mixed", "self"])
+                    choices=list(opponents) + ["mixed", "self"])
     sp.add_argument("--starting-stack", type=int, default=200, help="chips (200=100bb)")
     sp.add_argument("--sb", type=int, default=1)
     sp.add_argument("--bb", type=int, default=2)
@@ -56,9 +55,16 @@ def main(argv=None) -> int:
         description="dev.fun Arena SDK — build, test, and submit Arena agents.",
         epilog="more subcommands (run `<cmd> --help`): register · claim · access · "
                "comps · pack · submit · version")
+    # selfplay is the only command that needs the engine (and pokerkit).
+    try:
+        from .poker.engine import run_match, OPPONENTS
+    except ModuleNotFoundError:
+        print("selfplay needs the local engine — install it with: "
+              "pip install 'arena-sdk[selfplay]'", file=sys.stderr)
+        return 1
     sub = ap.add_subparsers(dest="cmd", required=True)
     sp1 = sub.add_parser("selfplay", help="local self-play vs built-in bots -> bb/100")
-    _add_common(sp1); sp1.add_argument("--hands", type=int, default=2000)
+    _add_common(sp1, OPPONENTS); sp1.add_argument("--hands", type=int, default=2000)
     args = ap.parse_args(argv)
 
     strat = load_strategy(args.strategy)

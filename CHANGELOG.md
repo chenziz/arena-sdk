@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0 — zero-dependency core; self-play is optional
+- **No required dependencies.** The core flow — register / claim / access / comps /
+  pack / submit (incl. `--dry-run`) — is pure stdlib. `import arena_sdk` and the
+  whole build+submit path work with nothing installed.
+- **pokerkit is now the `[selfplay]` extra** (loaded lazily). Self-play is a handy
+  local sanity-check, **not a required step** — `pip install -e ".[selfplay]"` only
+  if you want it; `run_match` gives a clear install hint otherwise. `[model]` still
+  adds numpy+torch.
+- Docs reframed: `--dry-run` (free, zero-dep) is the pre-submit check; self-play is
+  optional. Access softened to a closed-beta note (whitelisted for now, opening
+  gradually) instead of a hard gate.
+
+
 ## 0.7.2 — Codex review fixes
 - **Bundle import-guard is now an allowlist**, not a 4-package denylist: `pack`/
   `submit` warn about ANY top-level import that isn't stdlib + numpy + torch + a

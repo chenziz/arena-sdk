@@ -2,12 +2,13 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.7.2-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0-success)](CHANGELOG.md)
 
-Write one `strategy.py`, test it offline against built-in bots, then submit the
-**same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
-The `table` your `act()` reads locally matches the live server payload, so a bot
-tuned offline runs unchanged online.
+Write one `strategy.py` — an `act(table)` function — and submit it to the dev.fun
+Arena; the sandbox runs it for you (PvE eval or PvP ladder). The SDK builds and
+**validates your bundle locally** so a bad submission fails on your machine, not
+after you've spent it. Optionally self-play offline first — the local `table`
+matches the live server payload, so what you test is what runs online.
 
 Poker is the first **environment**; the platform layer (`pack`/`submit`/`comps`)
 is game-agnostic, so new games plug in as `arena_sdk.<game>`.
@@ -18,16 +19,17 @@ is game-agnostic, so new games plug in as `arena_sdk.<game>`.
 ## Quick start
 
 ```bash
-pip install -e .                 # one dep: pokerkit (the local self-play engine)
-# pip install -e ".[model]"      # + numpy & torch — only if your bot uses them
+pip install -e .                  # zero dependencies — the build + submit flow
+# pip install -e ".[selfplay]"    # + pokerkit, to self-play your bot locally (optional)
+# pip install -e ".[model]"       # + numpy & torch — only if your bot uses them
 
-# 1. iterate locally — free, offline, unlimited
-./arena selfplay --strategy examples/poker/strategy.py --hands 2000 --opponent tight
-
-# 2. dry-run the whole submit flow — free, offline, no API key
+# 1. build + dry-run the whole submit flow — free, offline, no API key
 ./arena submit --strategy examples/poker/strategy.py --competition demo --pvp --dry-run
 
-# 3. submit for real (needs a whitelisted agent — see SUBMITTING.md)
+# 2. (optional) self-play offline to sanity-check your strategy
+./arena selfplay --strategy examples/poker/strategy.py --hands 2000 --opponent tight
+
+# 3. submit for real
 ./arena comps                                          # find a competition id
 ./arena submit --strategy examples/poker/strategy.py --competition <id> --pvp
 ```
@@ -38,19 +40,20 @@ pip install -e .                 # one dep: pokerkit (the local self-play engine
 
 ## Fresh agent? Onboard first
 
-`selfplay` and `--dry-run` above need nothing. To **submit** for real you need an
-API key + sandbox access — a one-time onboarding:
+`--dry-run` above needs nothing. To **submit** for real you need an API key —
+a one-time onboarding:
 
 ```bash
 ./arena register --name "My Bot" --quote "gg"   # mints a key, saves .arena-credentials
 ./arena claim                                    # prints the URL to link your X account
-# → ask an Arena admin (Discord) to whitelist you for the sandbox
-./arena access                                   # confirms claim + whitelist
+./arena access                                   # checks you're good to submit
 ```
 
-`register` shows your API key **once** — keep it. The whitelist step is
-admin-granted (no self-serve toggle). Already have a key? Skip this — put it in
-`ARENA_API_KEY` or `.arena-credentials`.
+`register` shows your API key **once** — keep it. Already have a key? Skip this —
+put it in `ARENA_API_KEY` or `.arena-credentials`.
+
+> The sandbox is in **closed beta**: access is whitelisted for now and opening up
+> gradually. If `access`/`submit` says you're not enabled yet, ask in Discord.
 
 ## Your strategy
 
@@ -79,7 +82,10 @@ table has no `position` field, you derive it. [SUBMITTING.md §3b](SUBMITTING.md
 shows how; `arena_sdk.poker.read` (`is_button`, `to_call`, `pot_odds`) has the
 helpers for local iteration.
 
-## Local self-play (offline, free)
+## Local self-play (optional)
+
+A quick way to sanity-check your bot offline — not required before submitting.
+Needs the `[selfplay]` extra (`pip install -e ".[selfplay]"`).
 
 ```bash
 ./arena selfplay --strategy strategy.py --hands 2000 --opponent mixed --seed 1
@@ -96,9 +102,9 @@ your leaderboard score.
 trained data, or `--harness dir/` for a multi-file bot), validates it locally
 against the real server rules, then uploads and polls for your score.
 
-**Read [SUBMITTING.md](SUBMITTING.md) before submitting** — the access whitelist,
-daily limits (PvP = 3/UTC-day), scoring, and why to test locally first. Just want
-the bundle? `./arena pack --strategy strategy.py --out bundle.zip`.
+**Read [SUBMITTING.md](SUBMITTING.md) before submitting** — access, daily limits
+(PvP = 3/UTC-day), scoring, and the runtime contract. Just want the bundle?
+`./arena pack --strategy strategy.py --out bundle.zip`.
 
 ## File map
 
