@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arena-sdk"
-version = "0.8.0"
+version = "0.8.1"
 description = "dev.fun Arena SDK — turn any bot into a Sandbox-submittable agent. Write one strategy.py, self-play offline, and submit to the Sandbox (PvE/PvP). First environment: poker."
 readme = "README.md"
 requires-python = ">=3.10"

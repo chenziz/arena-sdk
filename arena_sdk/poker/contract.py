@@ -1,16 +1,13 @@
 """Load a user strategy file and adapt it to ONE uniform callable, matching the
 dev.fun Arena server's `static-agent` contract.
 
-Server contract (verified against the live sandbox runner): a strategy file
-exports `choose_action(table)` **or** `act(table)` — the runner tries
-`choose_action` first, then `act`. It must return ONE of:
-  - an action string  -> {"action": "..."}
-  - a dict {action, amount?, reasoning_text?}
-The server REJECTS a tuple/list return (`sandbox_strategy_invalid`); only a
-string or a dict is accepted. (`normalize_action` below still coerces a tuple for
-LOCAL self-play convenience, but `pack`/`submit` flag a tuple-returning bot before
-you spend a submission.) The optional reasoning field is `reasoning_text` (a
-legacy `reasoning` key is also read).
+Server contract: a strategy file exports `choose_action(table)` **or**
+`act(table)` — the runner tries `choose_action` first, then `act`. It may return:
+  - an action string                    -> {"action": "..."}
+  - a dict {action, amount?, reasoning_text?}  (the safe, unambiguous form)
+  - a tuple/list (action, amount, reasoning_text)
+A **dict** is the recommended form. The optional reasoning field is
+`reasoning_text` (a legacy `reasoning` key is also read).
 
 So the SAME strategy.py you test locally is what you upload — byte for byte.
 """

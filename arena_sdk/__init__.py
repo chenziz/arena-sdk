@@ -32,4 +32,4 @@ __all__ = ["run_match", "play_one_hand", "build_table", "OPPONENTS",
            "load_strategy", "normalize_action", "clamp_to_range",
            "hero", "hole_cards", "button_seat", "is_button", "to_call",
            "pot_odds", "can", "build_bundle", "BundleError", "submit", "poll"]
-__version__ = "0.8.0"
+__version__ = "0.8.1"

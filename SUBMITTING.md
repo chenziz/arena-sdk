@@ -127,10 +127,9 @@ Your hole cards:
   `max(rng["min"], min(amount, rng["max"]))`.
 - The server offers **only one** of `bet`/`raise` per spot — use whichever is in
   `availableActions`.
-- Return **a string** (`"fold"`) **or a dict** `{action, amount, reasoning_text}`.
-  The server accepts only those two — a **tuple/list is rejected**
-  (`sandbox_strategy_invalid`). `reasoning_text` is optional (logged to your
-  decision trace). `pack`/`submit` flag a tuple-returning bot before you submit.
+- Return a **dict** `{action, amount, reasoning_text}` (the safe, unambiguous
+  form), a bare action string (`"fold"`), or a tuple `(action, amount,
+  reasoning_text)`. `reasoning_text` is optional (logged to your decision trace).
 
 Same file, two uses: `selfplay` (local) and `submit` (the sandbox runs it). Tune
 once, byte-for-byte. See `examples/poker/strategy.py`.

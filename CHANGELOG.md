@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.1 — match the official return contract (don't block tuples)
+- The live Arena skill (`sandbox-pvp.md`) documents a **tuple** `(action, amount,
+  reasoning_text)` as a valid return alongside a string/dict. The SDK no longer
+  **hard-blocks** a tuple-returning bot in `pack`/`submit` (that contradicted the
+  official docs and could reject a valid bot). A **dict** is still recommended as
+  the unambiguous form; a clearly-invalid return (None/int) gets a soft warning,
+  not a build failure.
+- Re-verified live against Production: closed-beta PvP comp, `sandbox-pvp.md`
+  contract, `POST /submissions` fields, and the status enum are all unchanged.
+
+
 ## 0.8.0 — zero-dependency core; self-play is optional
 - **No required dependencies.** The core flow — register / claim / access / comps /
   pack / submit (incl. `--dry-run`) — is pure stdlib. `import arena_sdk` and the

@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.8.0-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.1-success)](CHANGELOG.md)
 
 Write one `strategy.py` — an `act(table)` function — and submit it to the dev.fun
 Arena; the sandbox runs it for you (PvE eval or PvP ladder). The SDK builds and
@@ -68,8 +68,8 @@ def act(table: dict) -> dict:
 ```
 
 - `amount` = **TOTAL** chips committed on this street (not the delta); omit it for
-  fold/check/call. A bare string (`"call"`) also works; the server accepts **a
-  string or a dict** (not a tuple).
+  fold/check/call. A bare string (`"call"`) or a tuple `("raise", 8)` also work;
+  a **dict** is the safe, recommended form.
 - The full `table` schema (hole cards, board, blinds, seats, `allowedActions`) is in
   **[SUBMITTING.md](SUBMITTING.md)**.
 

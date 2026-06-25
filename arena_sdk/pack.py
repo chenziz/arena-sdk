@@ -149,8 +149,10 @@ def _validate_isolation(raw: bytes) -> None:
             except Exception as e:
                 print("ACT_THREW " + type(e).__name__ + ": " + str(e)[:160])
             else:
-                if not isinstance(r, (str, dict)):     # server: str|dict only
-                    print("ACT_BADTYPE " + type(r).__name__); sys.exit(4)
+                # The contract accepts a string, a dict, or a tuple. Anything else
+                # (None, int, ...) is a bug — flag it, but don't block the build.
+                if not isinstance(r, (str, dict, list, tuple)):
+                    print("ACT_BADTYPE " + type(r).__name__)
                 print("ACT_OK " + json.dumps(r, default=str)[:200])
         """)
         env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
@@ -173,13 +175,6 @@ def _validate_isolation(raw: bytes) -> None:
         if proc.returncode == 3:
             raise BundleError("strategy.py defines no entrypoint — add a "
                               "choose_action(table) (or act(table)) function.")
-        if proc.returncode == 4:
-            bad = (out.rsplit("ACT_BADTYPE", 1)[-1].strip() or "that type")
-            raise BundleError(
-                f"your strategy returned a `{bad}` — the server only accepts a string "
-                '(e.g. "fold") or a dict (e.g. {"action": "raise", "amount": 120}); a '
-                "tuple/list is rejected server-side (sandbox_strategy_invalid). Wrap it "
-                "in a dict before submitting.")
         if proc.returncode != 0:
             tail = out.splitlines()[-1] if out else f"exit {proc.returncode}"
             # Classify by the exception CLASS on the traceback's final line only.
@@ -192,6 +187,11 @@ def _validate_isolation(raw: bytes) -> None:
             if etype in ("SyntaxError", "IndentationError", "TabError"):
                 raise BundleError(f"strategy.py has a syntax error: {tail}")
             raise BundleError(f"strategy.py failed to load in isolation: {tail}")
+        if "ACT_BADTYPE" in out:
+            bad = out.rsplit("ACT_BADTYPE", 1)[-1].split()[0]
+            print(f"[pack] ⚠ act() returned a `{bad}` — return a dict "
+                  '(e.g. {"action": "raise", "amount": 120}) or a bare action string; '
+                  "a dict is the safe form.")
         last = out.splitlines()[-1] if out else ""
         if last.startswith("ACT_THREW"):
             print(f"[pack] ⚠ act() raised on a sample hand ({last[9:]}) — "
