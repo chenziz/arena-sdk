@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 — prod-readiness audit
+Full field-level audit of every SDK call against the live prod `__introspection`
+(148 KB). Everything matched — multipart field names (`competitionId`/`file`/
+`template`/`replace`), the submission status enum (incl. `TimedOut` in `TERMINAL`),
+the `pvp` block + its status enum, `/submissions/settings` access shape, and the
+`auth/register`+`claim` response fields — with one hygiene fix:
+- **`POST /submissions`** no longer carries a trailing slash (the canonical path
+  in `__introspection` has none). A probe confirmed prod routes both identically
+  (no 308), so this was never a live break — but the bare path removes any future
+  redirect risk on the one metered, body-carrying request.
+
 ## 0.4.0 — fresh-agent onboarding (register + claim)
 A brand-new agent can now go end-to-end through the SDK. Previously `submit`
 assumed you already had an API key; the register → claim half was missing.

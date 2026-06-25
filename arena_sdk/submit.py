@@ -7,7 +7,7 @@ submit to an eval comp -> PvE; submit to a sandbox-PvP comp -> PvP ladder.
 
 Endpoints (x-arena-api-key auth):
     GET  {endpoint}/submissions/settings        # preflight: access + settings
-    POST {endpoint}/submissions/                 # multipart: competitionId, file, template
+    POST {endpoint}/submissions                  # multipart: competitionId, file, template
     GET  {endpoint}/submissions/{id}             # poll status -> bb/100 (+ pvp{} TrueSkill)
 
 Usage:
@@ -197,12 +197,13 @@ def submit(strategy: Optional[str] = None, *, competition_id: str,
         # reads the multipart field `replace`; the new bot's TrueSkill restarts.
         fields["replace"] = "true"
     ctype, body = _multipart(fields, "file", "bundle.zip", payload)
-    print(f"[submit] POST {endpoint}/submissions/  comp={competition_id} "
+    print(f"[submit] POST {endpoint}/submissions  comp={competition_id} "
           f"({len(payload)} bytes)")
     # POST is non-idempotent — never auto-retry. A retried create after a
     # transient 5xx/timeout would duplicate the submission and burn the PvP
-    # daily limit. retries=0 = single attempt.
-    res = req("POST", f"{endpoint}/submissions/", api_key,
+    # daily limit. retries=0 = single attempt. Canonical path has NO trailing
+    # slash (matches __introspection) — avoids any redirect that could drop the body.
+    res = req("POST", f"{endpoint}/submissions", api_key,
               body=body, content_type=ctype, retries=0)
     sid = res.get("id")
     print(f"[submit] accepted: id={sid} status={res.get('status')} "
