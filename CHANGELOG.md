@@ -1,8 +1,9 @@
 # Changelog
 
 ## 0.3.1 — align to the Heads-Up Sandbox PvP contract
-Verified against the live `eval-pvp.md` skill (the Heads-Up Sandbox template) +
-`competition/list-active`. Submission flow, access (`/submissions/settings` →
+Verified against the live Heads-Up Sandbox PvP skill (`sandbox-pvp.md` on prod,
+contract-identical to beta's `eval-pvp.md`) + `competition/list-active`.
+Submission flow, access (`/submissions/settings` →
 `access.sandboxBenchmark.{claimed,whitelisted}`), poll, TrueSkill scoring, and the
 `static-agent`-only rule were already aligned. Closed three gaps:
 - **`poll` now surfaces `pvp.error`** (and flags `pvp.status` Failed/Discarded). The
