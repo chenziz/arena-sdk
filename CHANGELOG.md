@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.2 — local env mirrors the server runtime
+- **`numpy` is now a dependency** (the sandbox preinstalls it), and `pip install
+  -e ".[model]"` adds `torch` — so a numpy/torch model bot self-plays + packs
+  locally exactly as it runs on the server. Previously `import numpy` failed
+  locally, so model bots could not be tested before submitting.
+- Reminder surfaced in docs: `pack`'s one-sample isolation catches import/crash
+  on a preflop spot; **`selfplay` across many hands is what catches a
+  state-dependent crash** (e.g. a bot that only throws on the river). Run it first.
+
+
 ## 0.6.1 — runtime-library accuracy + import guard
 - Documented the confirmed sandbox runtime: **numpy + torch are preinstalled**;
   `eval7`/`pokerkit`/`treys` are not, and a C-extension lib like `eval7` can't be

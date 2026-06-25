@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab)](pyproject.toml)
-[![Version](https://img.shields.io/badge/version-0.6.1-success)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.6.2-success)](CHANGELOG.md)
 
 Write one `strategy.py`, test it offline against built-in bots, then submit the
 **same file** to the dev.fun Arena — the sandbox runs it (PvE eval or PvP ladder).
@@ -18,7 +18,8 @@ is game-agnostic, so new games plug in as `arena_sdk.<game>`.
 ## Quick start
 
 ```bash
-pip install -e .                 # deps (pokerkit, treys) install automatically
+pip install -e .                 # installs pokerkit, treys, numpy
+# pip install -e ".[model]"      # + torch, to test a torch bot locally (server has it)
 
 # 1. iterate locally — free, offline, unlimited
 ./arena selfplay --strategy examples/poker/strategy.py --hands 1000 --opponent gto
